@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Hardcoded Record ID</label>
+    <protected>false</protected>
+    <values>
+        <field>Rule_Id__c</field>
+        <value xsi:type="xsd:string">SEC-001</value>
+    </values>
+    <values>
+        <field>Category__c</field>
+        <value xsi:type="xsd:string">Security</value>
+    </values>
+    <values>
+        <field>Severity__c</field>
+        <value xsi:type="xsd:string">High</value>
+    </values>
+    <values>
+        <field>Weight__c</field>
+        <value xsi:type="xsd:double">10.0</value>
+    </values>
+    <values>
+        <field>Detection_Class__c</field>
+        <value xsi:type="xsd:string">HardcodedIdRule</value>
+    </values>
+    <values>
+        <field>Description__c</field>
+        <value xsi:type="xsd:string">Detects hardcoded Salesforce record IDs in assignments, filters, formulas, and input parameters. Hardcoded IDs break during sandbox-to-production deployments and are fragile to data changes.</value>
+    </values>
+    <values>
+        <field>Remediation__c</field>
+        <value xsi:type="xsd:string">Replace hardcoded IDs with dynamic lookups (Get Records), Custom Labels, Custom Metadata, or Custom Settings for environment portability.</value>
+    </values>
+    <values>
+        <field>Is_Active__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>Max_Deduction__c</field>
+        <value xsi:type="xsd:double">20.0</value>
+    </values>
+</CustomMetadata>

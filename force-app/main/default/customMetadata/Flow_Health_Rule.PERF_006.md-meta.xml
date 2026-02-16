@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Subflow Inside Loop</label>
+    <protected>false</protected>
+    <values>
+        <field>Rule_Id__c</field>
+        <value xsi:type="xsd:string">PERF-006</value>
+    </values>
+    <values>
+        <field>Category__c</field>
+        <value xsi:type="xsd:string">Performance</value>
+    </values>
+    <values>
+        <field>Severity__c</field>
+        <value xsi:type="xsd:string">High</value>
+    </values>
+    <values>
+        <field>Weight__c</field>
+        <value xsi:type="xsd:double">12.0</value>
+    </values>
+    <values>
+        <field>Detection_Class__c</field>
+        <value xsi:type="xsd:string">SubflowInLoopRule</value>
+    </values>
+    <values>
+        <field>Description__c</field>
+        <value xsi:type="xsd:string">Detects Subflow elements inside Loop elements. Each iteration invokes the subflow, multiplying any DML/SOQL operations within it.</value>
+    </values>
+    <values>
+        <field>Remediation__c</field>
+        <value xsi:type="xsd:string">Collect data in a collection variable inside the loop, then pass the collection to a single subflow call after the loop. Design the subflow to process records in bulk.</value>
+    </values>
+    <values>
+        <field>Is_Active__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>Max_Deduction__c</field>
+        <value xsi:type="xsd:double">20.0</value>
+    </values>
+</CustomMetadata>

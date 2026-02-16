@@ -1,0 +1,1297 @@
+<template>
+    <!-- Hidden download anchor (lives in shadow DOM for Locker Service compatibility) -->
+    <a data-id="downloadLink" class="slds-hide" aria-hidden="true"></a>
+
+    <!-- ================================================================ -->
+    <!-- PAGE HEADER                                                      -->
+    <!-- ================================================================ -->
+    <div class="slds-page-header slds-m-bottom_medium">
+        <div class="slds-page-header__row">
+            <div class="slds-page-header__col-title">
+                <div class="slds-media">
+                    <div class="slds-media__figure">
+                        <div class="app-logo">
+                            <svg viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="52" height="52" rx="10" fill="#0176d3"/>
+                                <!-- Flow nodes -->
+                                <circle cx="14" cy="18" r="4" fill="#ffffff" opacity="0.9"/>
+                                <circle cx="26" cy="14" r="4" fill="#ffffff" opacity="0.9"/>
+                                <circle cx="38" cy="18" r="4" fill="#ffffff" opacity="0.9"/>
+                                <!-- Connector lines -->
+                                <line x1="18" y1="18" x2="22" y2="15" stroke="#ffffff" stroke-width="1.5" opacity="0.6"/>
+                                <line x1="30" y1="15" x2="34" y2="17" stroke="#ffffff" stroke-width="1.5" opacity="0.6"/>
+                                <!-- Heartbeat pulse line -->
+                                <polyline points="8,34 16,34 19,28 22,40 25,30 28,36 31,26 34,38 37,32 40,34 44,34"
+                                    fill="none" stroke="#4cd964" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="slds-media__body">
+                        <h1 class="slds-page-header__title">Flow Health</h1>
+                        <p class="slds-text-body_small slds-text-color_weak">
+                            Analyze your Salesforce Flows against best practice rules
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- VIEW TOGGLE                                                      -->
+    <!-- ================================================================ -->
+    <div class="view-toggle slds-m-bottom_medium">
+        <button class={singleToggleClass} data-view="single" onclick={handleViewToggle}>
+            <lightning-icon icon-name="utility:flow" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+            Single Flow
+        </button>
+        <button class={bulkToggleClass} data-view="bulk" onclick={handleViewToggle}>
+            <lightning-icon icon-name="utility:dashboard" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+            Bulk Dashboard
+        </button>
+        <button class={settingsToggleClass} data-view="settings" onclick={handleViewToggle}>
+            <lightning-icon icon-name="utility:settings" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+            Settings
+        </button>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- SINGLE FLOW VIEW (Sprint 1-2)                                    -->
+    <!-- ================================================================ -->
+    <template lwc:if={isSingleView}>
+
+        <!-- Back to Dashboard button (only when drilled down from bulk) -->
+        <template lwc:if={showBackButton}>
+            <div class="slds-m-bottom_small">
+                <button class="slds-button slds-button_neutral" onclick={handleBackToDashboard}>
+                    <lightning-icon icon-name="utility:back" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                    Back to Dashboard
+                </button>
+            </div>
+        </template>
+
+        <!-- Flow Selector -->
+        <c-flow-selector onflowselect={handleFlowSelect}></c-flow-selector>
+
+        <!-- Analyzing Spinner -->
+        <template lwc:if={isAnalyzing}>
+            <div class="slds-align_absolute-center slds-p-around_large">
+                <lightning-spinner alternative-text="Analyzing flow..." size="medium"></lightning-spinner>
+                <span class="slds-m-left_medium slds-text-heading_small slds-text-color_weak">
+                    {analysisPhase}
+                </span>
+            </div>
+        </template>
+
+        <!-- Error Display -->
+        <template lwc:if={hasError}>
+            <div class="slds-notify slds-notify_alert slds-alert_error slds-m-around_medium" role="alert">
+                <span class="slds-assistive-text">error</span>
+                <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" class="slds-m-right_x-small"></lightning-icon>
+                <h2>{error}</h2>
+            </div>
+        </template>
+
+        <!-- Main Content: Flow Detail + Health Analysis -->
+        <template lwc:if={hasDetail}>
+
+            <!-- ============================================================ -->
+            <!-- HEALTH SCORE HERO (only shows after analysis completes)      -->
+            <!-- ============================================================ -->
+            <template lwc:if={hasAnalysis}>
+                <div class="score-hero slds-m-top_medium slds-m-bottom_medium">
+                    <div class="slds-grid slds-grid_align-center slds-grid_vertical-align-center slds-wrap">
+
+                        <!-- Score Ring -->
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_4-of-12 slds-text-align_center slds-p-around_medium">
+                            <div class="score-ring-container">
+                                <svg class="score-ring" viewBox="0 0 100 100">
+                                    <circle class="score-ring-bg" cx="50" cy="50" r="45"></circle>
+                                    <circle class="score-ring-fill" cx="50" cy="50" r="45"
+                                        style={scoreRingStyle}
+                                        stroke={scoreRingColor}></circle>
+                                </svg>
+                                <div class="score-ring-text">
+                                    <span class="score-number" style={gradeStyle}>{healthScore}</span>
+                                    <span class="score-label">/ 100</span>
+                                </div>
+                            </div>
+                            <div class="slds-m-top_x-small">
+                                <span class="grade-badge" style={gradeStyle}>
+                                    Grade: {healthGrade} &mdash; {healthGradeLabel}
+                                </span>
+                            </div>
+
+                            <!-- Export Buttons (Sprint 4) -->
+                            <template lwc:if={canExportSingle}>
+                                <div class="export-buttons slds-m-top_small">
+                                    <button class="slds-button slds-button_neutral slds-m-right_x-small" onclick={handleExportCsv}>
+                                        <lightning-icon icon-name="utility:download" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                        Export CSV
+                                    </button>
+                                    <button class="slds-button slds-button_neutral" onclick={handleExportPdf}>
+                                        <lightning-icon icon-name="utility:pdf_ext" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                        Export PDF
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Severity Breakdown -->
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_8-of-12 slds-p-around_medium">
+                            <h3 class="slds-text-heading_small slds-m-bottom_small">Findings Summary</h3>
+                            <div class="slds-grid slds-wrap slds-gutters_small">
+                                <div class="slds-col slds-size_1-of-4">
+                                    <div class="severity-card severity-card-critical">
+                                        <p class="severity-count">{criticalCount}</p>
+                                        <p class="severity-label">Critical</p>
+                                    </div>
+                                </div>
+                                <div class="slds-col slds-size_1-of-4">
+                                    <div class="severity-card severity-card-high">
+                                        <p class="severity-count">{highCount}</p>
+                                        <p class="severity-label">High</p>
+                                    </div>
+                                </div>
+                                <div class="slds-col slds-size_1-of-4">
+                                    <div class="severity-card severity-card-medium">
+                                        <p class="severity-count">{mediumCount}</p>
+                                        <p class="severity-label">Medium</p>
+                                    </div>
+                                </div>
+                                <div class="slds-col slds-size_1-of-4">
+                                    <div class="severity-card severity-card-low">
+                                        <p class="severity-count">{lowCount}</p>
+                                        <p class="severity-label">Low</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="slds-text-body_small slds-text-color_weak slds-m-top_small">
+                                {totalFindings} finding(s) across all rules
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Score Trend Section (Sprint 4) -->
+                <template lwc:if={hasTrendData}>
+                    <div class="trend-section slds-m-top_medium slds-m-bottom_medium">
+                        <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small">
+                            <h3 class="slds-text-heading_small slds-m-right_small">Score Trend</h3>
+                            <span class={trendBadgeClass}>
+                                <lightning-icon icon-name={trendDirectionIcon} size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                {trendBadgeText}
+                            </span>
+                        </div>
+                        <div class="trend-chart-wrapper">
+                            <svg viewBox="0 0 400 80" class="trend-chart-svg" xmlns="http://www.w3.org/2000/svg">
+                                <!-- Grid lines -->
+                                <line x1="10" y1="10" x2="390" y2="10" stroke="#e5e7eb" stroke-width="0.5"></line>
+                                <line x1="10" y1="45" x2="390" y2="45" stroke="#e5e7eb" stroke-width="0.5"></line>
+                                <line x1="10" y1="70" x2="390" y2="70" stroke="#e5e7eb" stroke-width="0.5"></line>
+                                <!-- Area fill -->
+                                <path d={trendChartAreaPath} fill="rgba(1, 118, 211, 0.1)"></path>
+                                <!-- Trend line -->
+                                <path d={trendChartLinePath} fill="none" stroke="#0176d3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                <!-- Current point dot -->
+                                <template lwc:if={trendChartLastPoint}>
+                                    <circle cx={trendChartLastPoint.x} cy={trendChartLastPoint.y} r="4" fill="#0176d3"></circle>
+                                </template>
+                            </svg>
+                        </div>
+                    </div>
+                </template>
+            </template>
+
+            <!-- ============================================================ -->
+            <!-- FLOW INFO CARD (metadata summary from Sprint 1)              -->
+            <!-- ============================================================ -->
+            <lightning-card title={flowDetail.label} icon-name="standard:flow" class="slds-m-top_medium">
+                <div class="slds-p-around_medium">
+
+                    <!-- Flow Properties Grid -->
+                    <div class="slds-grid slds-wrap slds-gutters_small slds-m-bottom_medium">
+                        <div class="slds-col slds-size_1-of-3 slds-p-bottom_small">
+                            <p class="slds-text-title_caps slds-text-color_weak slds-m-bottom_xx-small">Developer Name</p>
+                            <p class="slds-text-body_regular"><strong>{flowDetail.developerName}</strong></p>
+                        </div>
+                        <div class="slds-col slds-size_1-of-3 slds-p-bottom_small">
+                            <p class="slds-text-title_caps slds-text-color_weak slds-m-bottom_xx-small">Flow Type</p>
+                            <p class="slds-text-body_regular"><strong>{processTypeLabel}</strong></p>
+                        </div>
+                        <div class="slds-col slds-size_1-of-3 slds-p-bottom_small">
+                            <p class="slds-text-title_caps slds-text-color_weak slds-m-bottom_xx-small">Trigger</p>
+                            <p class="slds-text-body_regular"><strong>{triggerTypeLabel}</strong></p>
+                        </div>
+                        <div class="slds-col slds-size_1-of-3 slds-p-bottom_small">
+                            <p class="slds-text-title_caps slds-text-color_weak slds-m-bottom_xx-small">API Version</p>
+                            <p class="slds-text-body_regular"><strong>{flowDetail.apiVersion}</strong></p>
+                        </div>
+                        <div class="slds-col slds-size_1-of-3 slds-p-bottom_small">
+                            <p class="slds-text-title_caps slds-text-color_weak slds-m-bottom_xx-small">Run Mode</p>
+                            <p class="slds-text-body_regular"><strong>{runModeLabel}</strong></p>
+                        </div>
+                        <div class="slds-col slds-size_1-of-3 slds-p-bottom_small">
+                            <p class="slds-text-title_caps slds-text-color_weak slds-m-bottom_xx-small">Total Elements</p>
+                            <p class="slds-text-body_regular"><strong>{flowDetail.totalElements}</strong></p>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="slds-m-bottom_medium">
+                        <p class="slds-text-title_caps slds-text-color_weak slds-m-bottom_xx-small">Description</p>
+                        <p class={descriptionStatus}>{descriptionText}</p>
+                    </div>
+
+                    <!-- Element Breakdown -->
+                    <div class="slds-m-top_medium">
+                        <h3 class="slds-text-heading_small slds-m-bottom_small">Element Breakdown</h3>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">Click a tile to see element API names</p>
+                        <div class="slds-grid slds-wrap slds-gutters_small">
+                            <template for:each={elementSummary} for:item="item">
+                                <div key={item.key} class="slds-col slds-size_1-of-4 slds-p-bottom_small">
+                                    <div class={item.cardClass}
+                                         data-type={item.key}
+                                         onclick={handleElementTileClick}
+                                         role="button"
+                                         tabindex="0">
+                                        <div class="slds-grid slds-grid_vertical-align-center">
+                                            <lightning-icon
+                                                icon-name={item.icon}
+                                                size="x-small"
+                                                class="slds-m-right_x-small"
+                                            ></lightning-icon>
+                                            <div>
+                                                <p class="slds-text-body_small slds-text-color_weak">{item.label}</p>
+                                                <p class="slds-text-heading_medium"><strong>{item.count}</strong></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Element Names Panel (shown when a tile is clicked) -->
+                        <template lwc:if={hasSelectedElements}>
+                            <div class="element-names-panel slds-m-top_small">
+                                <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small">
+                                    <lightning-icon icon-name="utility:chevronright" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                    <h4 class="slds-text-title_bold">{selectedElementLabel}</h4>
+                                    <span class="slds-badge slds-m-left_x-small">{selectedElementNames.length}</span>
+                                </div>
+                                <div class="element-names-list">
+                                    <template for:each={selectedElementNames} for:item="el">
+                                        <div key={el.key} class="element-name-item">
+                                            <lightning-icon icon-name="utility:record" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                            <span class="slds-text-body_small element-api-name">{el.name}</span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                </div>
+            </lightning-card>
+
+            <!-- ============================================================ -->
+            <!-- FINDINGS SUMMARY TABLE (compact at-a-glance view)            -->
+            <!-- ============================================================ -->
+            <template lwc:if={hasFindings}>
+                <lightning-card title="Findings Summary" icon-name="standard:entitlement" class="slds-m-top_medium">
+                    <div slot="actions">
+                        <span class="slds-text-body_small slds-text-color_weak">Click a row to jump to details</span>
+                    </div>
+                    <div class="slds-p-around_medium">
+
+                        <!-- Category Score Pills -->
+                        <div class="slds-grid slds-wrap slds-gutters_x-small slds-m-bottom_small">
+                            <template for:each={findingsDisplay} for:item="cat">
+                                <div key={cat.category} class="slds-col slds-shrink-none slds-m-bottom_xx-small">
+                                    <span class="slds-badge slds-theme_default">
+                                        {cat.category}: <strong class={cat.scoreClass}>{cat.score}</strong>
+                                        <span class="slds-text-body_small slds-text-color_weak slds-m-left_xx-small">({cat.count})</span>
+                                    </span>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Compact Summary Table -->
+                        <div class="findings-summary-table-wrapper">
+                            <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_col-bordered findings-summary-table">
+                                <thead>
+                                    <tr class="slds-line-height_reset">
+                                        <th class="slds-text-title_caps" scope="col" style="width: 3rem;">#</th>
+                                        <th class="slds-text-title_caps" scope="col" style="width: 6rem;">Severity</th>
+                                        <th class="slds-text-title_caps" scope="col">Rule</th>
+                                        <th class="slds-text-title_caps" scope="col" style="width: 8rem;">Category</th>
+                                        <th class="slds-text-title_caps" scope="col">Element</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template for:each={findingsSummaryTable} for:item="row">
+                                        <tr key={row.anchorKey}
+                                            class={row.tableRowClass}
+                                            data-anchor={row.anchorKey}
+                                            onclick={handleFindingRowClick}>
+                                            <td class="slds-text-body_small slds-text-color_weak">{row.idx}</td>
+                                            <td>
+                                                <span class={row.severityBadgeClass}>{row.severity}</span>
+                                            </td>
+                                            <td>
+                                                <span class="slds-text-body_small slds-truncate" title={row.ruleName}>{row.ruleName}</span>
+                                                <span class="slds-text-body_small slds-text-color_weak"> ({row.ruleId})</span>
+                                            </td>
+                                            <td class="slds-text-body_small">{row.category}</td>
+                                            <td class="slds-text-body_small slds-truncate" title={row.elementName}>
+                                                <template lwc:if={row.hasElement}>
+                                                    {row.elementName}
+                                                </template>
+                                                <template lwc:else>
+                                                    <span class="slds-text-color_weak">—</span>
+                                                </template>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </lightning-card>
+
+                <!-- ============================================================ -->
+                <!-- REMEDIATION CARDS (detailed view with Description + Fix)      -->
+                <!-- ============================================================ -->
+                <lightning-card title="Remediation Details" icon-name="standard:coaching" class="slds-m-top_medium">
+                    <div class="slds-p-around_medium">
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                            Detailed findings with descriptions and recommended fixes, sorted by severity.
+                        </p>
+
+                        <template for:each={findingsSummaryTable} for:item="finding">
+                            <div key={finding.anchorKey}
+                                 data-card-id={finding.anchorKey}
+                                 class="remediation-detail-card slds-m-bottom_small">
+
+                                <!-- Card Header: Rank + Rule Name + ID + Severity -->
+                                <div class="remediation-card-header">
+                                    <div class="slds-grid slds-grid_vertical-align-center slds-grid_align-spread">
+                                        <div class="slds-col slds-grow">
+                                            <div class="slds-grid slds-grid_vertical-align-center">
+                                                <span class="slds-badge slds-badge_inverse slds-m-right_x-small" style="min-width: 1.5rem; text-align: center;">
+                                                    {finding.idx}
+                                                </span>
+                                                <span class="slds-text-heading_small">{finding.ruleName}</span>
+                                                <span class="slds-text-body_small slds-text-color_weak slds-m-left_x-small">({finding.ruleId})</span>
+                                            </div>
+                                        </div>
+                                        <div class="slds-col slds-shrink-none">
+                                            <span class={finding.severityBadgeClass}>{finding.severity}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Card Body -->
+                                <div class="remediation-card-body">
+                                    <!-- Element Info (if present) -->
+                                    <template lwc:if={finding.hasElement}>
+                                        <div class="slds-m-bottom_x-small">
+                                            <lightning-icon icon-name="utility:pin" size="xx-small" class="slds-m-right_xx-small" alternative-text="Element"></lightning-icon>
+                                            <span class="slds-text-body_small slds-text-color_weak">Element:</span>
+                                            <strong class="slds-text-body_small slds-m-left_xx-small">{finding.elementName}</strong>
+                                            <span class="slds-text-body_small slds-text-color_weak slds-m-left_xx-small">({finding.elementType})</span>
+                                        </div>
+                                    </template>
+
+                                    <!-- Description Section (The "Why") -->
+                                    <div class="finding-description-section slds-m-bottom_x-small">
+                                        <p class="slds-text-title_caps slds-text-color_weak slds-m-bottom_xx-small" style="font-size: 0.625rem;">
+                                            Why This Matters
+                                        </p>
+                                        <p class="slds-text-body_small">{finding.description}</p>
+                                    </div>
+
+                                    <!-- Remediation Section (The "How") -->
+                                    <div class="remediation-box">
+                                        <lightning-icon icon-name="utility:light_bulb" size="xx-small" class="slds-m-right_xx-small" alternative-text="Fix"></lightning-icon>
+                                        <div>
+                                            <p class="slds-text-title_caps slds-text-color_weak slds-m-bottom_xx-small" style="font-size: 0.625rem;">
+                                                How to Fix
+                                            </p>
+                                            <span class="slds-text-body_small">{finding.remediation}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </lightning-card>
+            </template>
+
+            <!-- No findings = perfect score message -->
+            <template lwc:if={hasAnalysis}>
+                <template lwc:if={noFindings}>
+                    <div class="slds-box slds-theme_success slds-m-top_medium slds-text-align_center slds-p-around_medium">
+                        <lightning-icon icon-name="utility:check" variant="inverse" size="small" class="slds-m-right_small"></lightning-icon>
+                        <span class="slds-text-heading_small" style="color: white;">
+                            No issues found! This flow follows all best practices.
+                        </span>
+                    </div>
+                </template>
+            </template>
+
+        </template>
+    </template>
+
+    <!-- ================================================================ -->
+    <!-- BULK DASHBOARD VIEW (Sprint 3)                                   -->
+    <!-- ================================================================ -->
+    <template lwc:if={isBulkView}>
+
+        <!-- Bulk Dashboard Card Container -->
+        <div class="bulk-card-container">
+
+            <!-- Dashboard Header -->
+            <div class="slds-m-bottom_medium">
+                <h2 class="slds-text-heading_medium slds-m-bottom_xx-small">
+                    Organization Flow Health Dashboard
+                </h2>
+                <p class="slds-text-body_small slds-text-color_weak">
+                    Scan all active flows to identify patterns and prioritize improvements.
+                </p>
+            </div>
+
+            <!-- Org Health Trend Section (Sprint 4) -->
+            <template lwc:if={hasOrgTrend}>
+                <div class="org-trend-section slds-m-bottom_medium">
+                    <h3 class="slds-text-title_bold slds-m-bottom_x-small">Org Health Trend (Last 30 Days)</h3>
+                    <div class="org-trend-chart-wrapper">
+                        <svg viewBox="0 0 600 100" class="org-trend-chart-svg" xmlns="http://www.w3.org/2000/svg">
+                            <line x1="10" y1="10" x2="590" y2="10" stroke="#e5e7eb" stroke-width="0.5"></line>
+                            <line x1="10" y1="50" x2="590" y2="50" stroke="#e5e7eb" stroke-width="0.5"></line>
+                            <line x1="10" y1="90" x2="590" y2="90" stroke="#e5e7eb" stroke-width="0.5"></line>
+                            <path d={orgTrendAreaPath} fill="rgba(46, 132, 74, 0.1)"></path>
+                            <path d={orgTrendLinePath} fill="none" stroke="#2E844A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Scan Control -->
+            <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_medium">
+                <lightning-button
+                    variant="brand"
+                    label="Scan All Flows"
+                    icon-name="utility:refresh"
+                    onclick={handleScanAllFlows}
+                    disabled={scanButtonDisabled}
+                ></lightning-button>
+                <span class="slds-m-left_medium slds-text-body_small slds-text-color_weak">
+                    {bulkFlowCount} active flows found
+                </span>
+
+                <!-- Export CSV Button (Sprint 4) -->
+                <template lwc:if={canExportBulk}>
+                    <lightning-button
+                        variant="neutral"
+                        label="Export CSV"
+                        icon-name="utility:download"
+                        onclick={handleExportBulkCsv}
+                        class="slds-m-left_medium"
+                    ></lightning-button>
+                </template>
+            </div>
+
+            <!-- Scanning Progress -->
+            <template lwc:if={bulkIsScanning}>
+                <div class="bulk-progress-panel slds-m-bottom_medium slds-p-around_medium">
+                    <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">
+                        <lightning-spinner alternative-text="Scanning..." size="small" class="slds-m-right_small"></lightning-spinner>
+                        <div>
+                            <p class="slds-text-body_regular">
+                                <strong>Analyzing:</strong> {bulkCurrentFlowName}
+                            </p>
+                            <p class="slds-text-body_small slds-text-color_weak">
+                                {bulkScanProgress}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" style={bulkProgressBarStyle}></div>
+                    </div>
+                    <p class="slds-text-body_small slds-text-color_weak slds-text-align_center slds-m-top_x-small">
+                        {bulkProgressPercent}% complete
+                    </p>
+                </div>
+            </template>
+
+            <!-- Bulk Scan Error -->
+            <template lwc:if={hasBulkScanError}>
+                <div class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_medium" role="alert">
+                    <span class="slds-assistive-text">error</span>
+                    <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" class="slds-m-right_x-small"></lightning-icon>
+                    <h2>{bulkScanError}</h2>
+                </div>
+            </template>
+
+            <!-- ============================================================ -->
+            <!-- SUMMARY STATS (shown when at least one result exists)        -->
+            <!-- ============================================================ -->
+            <template lwc:if={hasBulkResults}>
+
+                <div class="slds-grid slds-wrap slds-gutters_small slds-m-bottom_medium">
+
+                    <!-- Average Score -->
+                    <div class="slds-col slds-size_1-of-4">
+                        <div class="summary-stat-card">
+                            <p class="stat-label">Average Score</p>
+                            <p class="stat-value" style={avgScoreStyle}>{avgScore}</p>
+                            <p class="stat-sublabel">Grade {avgGrade}</p>
+                        </div>
+                    </div>
+
+                    <!-- Flows Analyzed -->
+                    <div class="slds-col slds-size_1-of-4">
+                        <div class="summary-stat-card">
+                            <p class="stat-label">Flows Analyzed</p>
+                            <p class="stat-value">{bulkFlowsAnalyzedCount}</p>
+                            <p class="stat-sublabel">of {bulkFlowCount}</p>
+                        </div>
+                    </div>
+
+                    <!-- Total Findings -->
+                    <div class="slds-col slds-size_1-of-4">
+                        <div class="summary-stat-card">
+                            <p class="stat-label">Total Findings</p>
+                            <p class="stat-value">{bulkTotalFindings}</p>
+                            <p class="stat-sublabel">across all flows</p>
+                        </div>
+                    </div>
+
+                    <!-- Critical Findings -->
+                    <div class="slds-col slds-size_1-of-4">
+                        <div class="summary-stat-card">
+                            <p class="stat-label">Critical Issues</p>
+                            <p class="stat-value stat-value-critical">{bulkTotalCritical}</p>
+                            <p class="stat-sublabel">need immediate attention</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- STRATEGIC ACTION PLAN (Layer 2: Context)                     -->
+                <!-- Severity-weighted ranking: (Weight × 1000) + Occurrences     -->
+                <!-- Critical=100, High=50, Medium=10, Low=1                      -->
+                <!-- ============================================================ -->
+                <template lwc:if={hasStrategicInsights}>
+                    <lightning-card title="Strategic Action Plan" icon-name="standard:threat_detection" class="slds-m-bottom_medium">
+                        <div slot="actions">
+                            <lightning-badge label="Weighted Priority" class="slds-badge_inverse"></lightning-badge>
+                        </div>
+                        <div class="slds-p-around_medium">
+                            <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_medium">
+                                All rule violations ranked by weighted priority. Severity is the primary sort key — a single Critical always outranks any number of High-severity items. Click a row to expand details.
+                            </p>
+
+                            <!-- ==================== NEEDS IMMEDIATE ATTENTION ==================== -->
+                            <template lwc:if={hasCriticalTierInsights}>
+                                <div class="strategic-tier-header strategic-tier-critical slds-m-bottom_x-small">
+                                    <lightning-icon icon-name="utility:warning" size="x-small" class="slds-m-right_x-small" alternative-text="Warning"></lightning-icon>
+                                    <strong>Needs Immediate Attention</strong>
+                                    <span class="slds-text-body_small slds-text-color_weak slds-m-left_x-small">(Critical &amp; High)</span>
+                                </div>
+
+                                <template for:each={criticalTierInsights} for:item="insight">
+                                    <div key={insight.key} class="strategic-insight-card strategic-card-critical slds-m-bottom_small">
+                                        <!-- Clickable Header Row -->
+                                        <div class="strategic-card-header"
+                                             data-rule-id={insight.ruleId}
+                                             onclick={handleToggleInsightDetail}
+                                             aria-expanded="false">
+                                            <div class="slds-grid slds-gutters_x-small slds-grid_vertical-align-center">
+                                                <!-- Rank -->
+                                                <div class="slds-col slds-shrink-none" style="min-width: 2.5rem;">
+                                                    <span class="slds-badge slds-badge_inverse" style="min-width: 2rem; text-align: center;">
+                                                        {insight.rankLabel}
+                                                    </span>
+                                                </div>
+                                                <!-- Severity -->
+                                                <div class="slds-col slds-shrink-none" style="min-width: 5rem;">
+                                                    <span class={insight.severityBadgeClass}>{insight.severity}</span>
+                                                </div>
+                                                <!-- Rule Name + ID -->
+                                                <div class="slds-col slds-grow">
+                                                    <span class="slds-text-body_regular"><strong>{insight.ruleName}</strong></span>
+                                                    <span class="slds-text-body_small slds-text-color_weak slds-m-left_xx-small">({insight.ruleId})</span>
+                                                </div>
+                                                <!-- Category -->
+                                                <div class="slds-col slds-shrink-none" style="min-width: 6rem;">
+                                                    <span class="slds-text-body_small">{insight.category}</span>
+                                                </div>
+                                                <!-- Count -->
+                                                <div class="slds-col slds-shrink-none slds-text-align_right" style="min-width: 5rem;">
+                                                    <span class="slds-badge">{insight.totalCount} hits</span>
+                                                </div>
+                                                <!-- Affected -->
+                                                <div class="slds-col slds-shrink-none slds-text-align_right" style="min-width: 5rem;">
+                                                    <span class="slds-text-body_small slds-text-color_weak">{insight.affectedPercent}%</span>
+                                                </div>
+                                                <!-- Expand icon -->
+                                                <div class="slds-col slds-shrink-none" style="min-width: 1.5rem;">
+                                                    <lightning-icon icon-name="utility:chevrondown" size="xx-small" alternative-text="Expand"></lightning-icon>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Expandable Detail Body (hidden by default) -->
+                                        <div class="strategic-card-body slds-hide" data-insight-body={insight.ruleId}>
+                                            <!-- Progress Bar -->
+                                            <div class="slds-m-bottom_x-small">
+                                                <div class="slds-grid slds-grid_vertical-align-center slds-gutters_x-small">
+                                                    <div class="slds-col slds-grow">
+                                                        <div class="progress-bar-container">
+                                                            <div class="progress-bar-fill" style={insight.progressBarWidth}></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="slds-col slds-shrink-none" style="min-width: 10rem;">
+                                                        <span class="slds-text-body_small">
+                                                            Priority Score: <strong>{insight.strategicPriority}</strong>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Description (Why) -->
+                                            <div class="finding-description-section slds-m-bottom_x-small">
+                                                <p class="slds-text-title_caps slds-text-color_weak slds-m-bottom_xx-small" style="font-size: 0.625rem;">Why This Matters</p>
+                                                <p class="slds-text-body_small">{insight.description}</p>
+                                            </div>
+
+                                            <!-- Remediation (How to Fix) -->
+                                            <div class="remediation-box">
+                                                <lightning-icon icon-name="utility:light_bulb" size="xx-small" class="slds-m-right_xx-small" alternative-text="Fix"></lightning-icon>
+                                                <div>
+                                                    <p class="slds-text-title_caps slds-text-color_weak slds-m-bottom_xx-small" style="font-size: 0.625rem;">How to Fix</p>
+                                                    <span class="slds-text-body_small">{insight.remediation}</span>
+                                                </div>
+                                            </div>
+
+                                            <!-- Business Impact -->
+                                            <div class="slds-box slds-box_xx-small slds-theme_info slds-m-top_x-small">
+                                                <span class="slds-text-body_small">{insight.businessImpact}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </template>
+
+                            <!-- ==================== IMPROVEMENT OPPORTUNITIES ==================== -->
+                            <template lwc:if={hasOtherTierInsights}>
+                                <div class="strategic-tier-header strategic-tier-other slds-m-top_medium slds-m-bottom_x-small">
+                                    <lightning-icon icon-name="utility:trending" size="x-small" class="slds-m-right_x-small" alternative-text="Improve"></lightning-icon>
+                                    <strong>Improvement Opportunities</strong>
+                                    <span class="slds-text-body_small slds-text-color_weak slds-m-left_x-small">(Medium &amp; Low)</span>
+                                </div>
+
+                                <template for:each={otherTierInsights} for:item="insight">
+                                    <div key={insight.key} class="strategic-insight-card strategic-card-other slds-m-bottom_small">
+                                        <!-- Clickable Header Row -->
+                                        <div class="strategic-card-header"
+                                             data-rule-id={insight.ruleId}
+                                             onclick={handleToggleInsightDetail}
+                                             aria-expanded="false">
+                                            <div class="slds-grid slds-gutters_x-small slds-grid_vertical-align-center">
+                                                <div class="slds-col slds-shrink-none" style="min-width: 2.5rem;">
+                                                    <span class="slds-badge slds-badge_inverse" style="min-width: 2rem; text-align: center;">
+                                                        {insight.rankLabel}
+                                                    </span>
+                                                </div>
+                                                <div class="slds-col slds-shrink-none" style="min-width: 5rem;">
+                                                    <span class={insight.severityBadgeClass}>{insight.severity}</span>
+                                                </div>
+                                                <div class="slds-col slds-grow">
+                                                    <span class="slds-text-body_regular"><strong>{insight.ruleName}</strong></span>
+                                                    <span class="slds-text-body_small slds-text-color_weak slds-m-left_xx-small">({insight.ruleId})</span>
+                                                </div>
+                                                <div class="slds-col slds-shrink-none" style="min-width: 6rem;">
+                                                    <span class="slds-text-body_small">{insight.category}</span>
+                                                </div>
+                                                <div class="slds-col slds-shrink-none slds-text-align_right" style="min-width: 5rem;">
+                                                    <span class="slds-badge">{insight.totalCount} hits</span>
+                                                </div>
+                                                <div class="slds-col slds-shrink-none slds-text-align_right" style="min-width: 5rem;">
+                                                    <span class="slds-text-body_small slds-text-color_weak">{insight.affectedPercent}%</span>
+                                                </div>
+                                                <div class="slds-col slds-shrink-none" style="min-width: 1.5rem;">
+                                                    <lightning-icon icon-name="utility:chevrondown" size="xx-small" alternative-text="Expand"></lightning-icon>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Expandable Detail Body -->
+                                        <div class="strategic-card-body slds-hide" data-insight-body={insight.ruleId}>
+                                            <div class="slds-m-bottom_x-small">
+                                                <div class="slds-grid slds-grid_vertical-align-center slds-gutters_x-small">
+                                                    <div class="slds-col slds-grow">
+                                                        <div class="progress-bar-container">
+                                                            <div class="progress-bar-fill" style={insight.progressBarWidth}></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="slds-col slds-shrink-none" style="min-width: 10rem;">
+                                                        <span class="slds-text-body_small">
+                                                            Priority Score: <strong>{insight.strategicPriority}</strong>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="finding-description-section slds-m-bottom_x-small">
+                                                <p class="slds-text-title_caps slds-text-color_weak slds-m-bottom_xx-small" style="font-size: 0.625rem;">Why This Matters</p>
+                                                <p class="slds-text-body_small">{insight.description}</p>
+                                            </div>
+                                            <div class="remediation-box">
+                                                <lightning-icon icon-name="utility:light_bulb" size="xx-small" class="slds-m-right_xx-small" alternative-text="Fix"></lightning-icon>
+                                                <div>
+                                                    <p class="slds-text-title_caps slds-text-color_weak slds-m-bottom_xx-small" style="font-size: 0.625rem;">How to Fix</p>
+                                                    <span class="slds-text-body_small">{insight.remediation}</span>
+                                                </div>
+                                            </div>
+                                            <div class="slds-box slds-box_xx-small slds-theme_info slds-m-top_x-small">
+                                                <span class="slds-text-body_small">{insight.businessImpact}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </template>
+
+                        </div>
+                    </lightning-card>
+                </template>
+
+                <!-- ============================================================ -->
+                <!-- GRADE DISTRIBUTION CHART                                     -->
+                <!-- ============================================================ -->
+                <lightning-card title="Grade Distribution" icon-name="standard:report" class="slds-m-bottom_medium">
+                    <div class="slds-p-around_medium">
+                        <div class="grade-chart-container">
+                            <template for:each={gradeDistribution} for:item="bar">
+                                <div key={bar.grade} class="grade-chart-row slds-m-bottom_x-small">
+                                    <div class="grade-chart-label">{bar.gradeLabel}</div>
+                                    <div class="grade-bar-wrapper">
+                                        <div class="grade-bar" style={bar.barStyle}></div>
+                                    </div>
+                                    <div class="grade-chart-count">{bar.count}</div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </lightning-card>
+
+                <!-- ============================================================ -->
+                <!-- ALL FLOWS TABLE                                              -->
+                <!-- ============================================================ -->
+                <lightning-card title="All Flows — Health Summary" icon-name="standard:flow" class="slds-m-top_medium">
+                    <div class="slds-p-around_medium">
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                            Sorted by score (lowest first). Click the action menu to view details.
+                        </p>
+                        <lightning-datatable
+                            key-field="id"
+                            data={sortedBulkTableData}
+                            columns={bulkTableColumns}
+                            sorted-by={bulkSortBy}
+                            sorted-direction={bulkSortDirection}
+                            onsort={handleBulkSort}
+                            onrowaction={handleBulkRowAction}
+                            hide-checkbox-column
+                        ></lightning-datatable>
+                    </div>
+                </lightning-card>
+
+            </template>
+
+            <!-- Empty State (no results yet, not scanning) -->
+            <template lwc:if={noBulkResults}>
+                <div class="bulk-empty-state slds-text-align_center slds-p-around_xx-large">
+                    <lightning-icon icon-name="utility:search" size="large" class="slds-m-bottom_medium"></lightning-icon>
+                    <h3 class="slds-text-heading_small slds-m-bottom_small">No scan results yet</h3>
+                    <p class="slds-text-body_regular slds-text-color_weak">
+                        Click "Scan All Flows" to analyze every active flow in your org.
+                    </p>
+                </div>
+            </template>
+
+        </div>
+
+    </template>
+
+    <!-- ================================================================ -->
+    <!-- SETTINGS VIEW (Sprint 4)                                         -->
+    <!-- ================================================================ -->
+    <template lwc:if={isSettingsView}>
+        <div class="settings-card-container">
+            <div class="slds-m-bottom_medium">
+                <h2 class="slds-text-heading_medium slds-m-bottom_xx-small">Rule Configuration</h2>
+                <p class="slds-text-body_small slds-text-color_weak">
+                    Customize health check rules. Adjust severity, weight, and max deduction values. Toggle rules on/off.
+                </p>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_medium">
+                <lightning-button
+                    variant="brand"
+                    label="Save Changes"
+                    icon-name="utility:save"
+                    onclick={handleSaveRuleChanges}
+                    disabled={saveButtonDisabled}
+                ></lightning-button>
+                <lightning-button
+                    variant="neutral"
+                    label="Reset"
+                    icon-name="utility:undo"
+                    onclick={handleResetRuleDefaults}
+                    class="slds-m-left_x-small"
+                ></lightning-button>
+
+                <!-- Saving spinner -->
+                <template lwc:if={ruleConfigsSaving}>
+                    <div class="slds-m-left_medium slds-grid slds-grid_vertical-align-center">
+                        <lightning-spinner alternative-text="Saving..." size="small" class="slds-m-right_x-small"></lightning-spinner>
+                        <span class="slds-text-body_small slds-text-color_weak">Deploying changes...</span>
+                    </div>
+                </template>
+
+                <!-- Save success -->
+                <template lwc:if={ruleConfigsSaved}>
+                    <span class="slds-m-left_medium slds-text-color_success slds-text-body_small">
+                        <lightning-icon icon-name="utility:check" size="xx-small" variant="success" class="slds-m-right_xx-small"></lightning-icon>
+                        Changes saved successfully!
+                    </span>
+                </template>
+            </div>
+
+            <!-- Error -->
+            <template lwc:if={ruleConfigError}>
+                <div class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_medium" role="alert">
+                    <span class="slds-assistive-text">error</span>
+                    <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" class="slds-m-right_x-small"></lightning-icon>
+                    <h2>{ruleConfigError}</h2>
+                </div>
+            </template>
+
+            <!-- Loading spinner -->
+            <template lwc:if={ruleConfigsLoading}>
+                <div class="slds-align_absolute-center slds-p-around_large">
+                    <lightning-spinner alternative-text="Loading rules..." size="medium"></lightning-spinner>
+                </div>
+            </template>
+
+            <!-- Rule config datatable -->
+            <template lwc:if={hasRuleConfigs}>
+                <lightning-datatable
+                    class="rule-config-table"
+                    key-field="id"
+                    data={ruleConfigData}
+                    columns={ruleConfigColumns}
+                    onsave={handleRuleCellChange}
+                    hide-checkbox-column
+                ></lightning-datatable>
+            </template>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- CUSTOM RULES SECTION                                          -->
+        <!-- ============================================================ -->
+        <div class="settings-card-container slds-m-top_medium">
+            <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_medium">
+                <div class="slds-col slds-grow">
+                    <h2 class="slds-text-heading_medium slds-m-bottom_xx-small">
+                        <lightning-icon icon-name="utility:new" size="x-small" class="slds-m-right_xx-small"></lightning-icon>
+                        Custom Rules
+                    </h2>
+                    <p class="slds-text-body_small slds-text-color_weak">
+                        Create your own rules without writing code. Define what to check, set thresholds, and get findings in your health reports.
+                    </p>
+                </div>
+                <div class="slds-col slds-no-flex">
+                    <lightning-button
+                        variant="brand"
+                        label="New Custom Rule"
+                        icon-name="utility:add"
+                        onclick={handleNewCustomRule}
+                    ></lightning-button>
+                </div>
+            </div>
+
+            <!-- Custom rule loading -->
+            <template lwc:if={customRulesLoading}>
+                <div class="slds-align_absolute-center slds-p-around_large">
+                    <lightning-spinner alternative-text="Loading custom rules..." size="medium"></lightning-spinner>
+                </div>
+            </template>
+
+            <!-- Custom rule error -->
+            <template lwc:if={customRuleError}>
+                <div class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_medium" role="alert">
+                    <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" class="slds-m-right_x-small"></lightning-icon>
+                    <h2>{customRuleError}</h2>
+                </div>
+            </template>
+
+            <!-- No custom rules yet -->
+            <template lwc:if={hasNoCustomRules}>
+                <div class="bulk-empty-state slds-p-around_large slds-text-align_center">
+                    <lightning-icon icon-name="utility:rules" size="large" class="slds-m-bottom_small"></lightning-icon>
+                    <p class="slds-text-heading_small slds-m-bottom_x-small">No Custom Rules Yet</p>
+                    <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_medium">
+                        Create rules tailored to your org's standards. Check element counts, naming conventions, flow properties, and more.
+                    </p>
+                    <lightning-button variant="brand" label="Create Your First Rule" icon-name="utility:add" onclick={handleNewCustomRule}></lightning-button>
+                </div>
+            </template>
+
+            <!-- Custom rules list -->
+            <template lwc:if={hasCustomRules}>
+                <template for:each={customRulesDisplay} for:item="rule">
+                    <div key={rule.id} class="finding-card slds-m-bottom_x-small">
+                        <div class="slds-grid slds-grid_vertical-align-center">
+                            <div class="slds-col slds-grow">
+                                <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
+                                    <span class="slds-badge slds-m-right_x-small" style={rule.badgeStyle}>{rule.ruleId}</span>
+                                    <strong class="slds-text-body_regular">{rule.name}</strong>
+                                    <span class={rule.severityBadgeClass}>{rule.severity}</span>
+                                    <span class="slds-badge slds-badge_lightest slds-m-left_x-small">{rule.category}</span>
+                                </div>
+                                <p class="slds-text-body_small slds-text-color_weak">{rule.ruleTypeLabel}</p>
+                                <template lwc:if={rule.description}>
+                                    <p class="slds-text-body_small slds-m-top_xx-small">{rule.description}</p>
+                                </template>
+                            </div>
+                            <div class="slds-col slds-no-flex slds-grid slds-grid_vertical-align-center">
+                                <lightning-input
+                                    type="toggle"
+                                    label="Active"
+                                    checked={rule.isActive}
+                                    data-rule-id={rule.id}
+                                    onchange={handleToggleCustomRule}
+                                    variant="label-hidden"
+                                    class="slds-m-right_small"
+                                ></lightning-input>
+                                <lightning-button-icon
+                                    icon-name="utility:edit"
+                                    alternative-text="Edit"
+                                    title="Edit Rule"
+                                    data-rule-id={rule.id}
+                                    onclick={handleEditCustomRule}
+                                    class="slds-m-right_xx-small"
+                                ></lightning-button-icon>
+                                <lightning-button-icon
+                                    icon-name="utility:delete"
+                                    alternative-text="Delete"
+                                    title="Delete Rule"
+                                    variant="bare"
+                                    data-rule-id={rule.id}
+                                    onclick={handleDeleteCustomRule}
+                                ></lightning-button-icon>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </template>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- CUSTOM RULE MODAL                                             -->
+        <!-- ============================================================ -->
+        <template lwc:if={showCustomRuleModal}>
+            <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+                <div class="slds-modal__container">
+                    <header class="slds-modal__header">
+                        <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={handleCloseCustomRuleModal}>
+                            <lightning-icon icon-name="utility:close" size="small" variant="inverse"></lightning-icon>
+                        </button>
+                        <h2 class="slds-text-heading_medium slds-hyphenate">
+                            {customRuleModalTitle}
+                        </h2>
+                    </header>
+                    <div class="slds-modal__content slds-p-around_medium">
+                        <div class="slds-grid slds-wrap slds-gutters_small">
+                            <!-- Rule Name -->
+                            <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                <lightning-input
+                                    label="Rule Name"
+                                    field-level-help="A descriptive name for this rule, shown in findings reports. Example: 'Max 5 Record Lookups'"
+                                    value={editingRule.name}
+                                    data-field="name"
+                                    onchange={handleCustomRuleFieldChange}
+                                    required
+                                    placeholder="e.g., Max 5 Record Lookups"
+                                ></lightning-input>
+                            </div>
+                            <!-- Rule ID -->
+                            <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                <lightning-input
+                                    label="Rule ID"
+                                    field-level-help="A unique identifier for this rule (e.g., CUST-001). Used internally for tracking and in CSV exports."
+                                    value={editingRule.ruleId}
+                                    data-field="ruleId"
+                                    onchange={handleCustomRuleFieldChange}
+                                    required
+                                    placeholder="e.g., CUST-001"
+                                ></lightning-input>
+                            </div>
+                            <!-- Rule Type -->
+                            <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+                                <lightning-combobox
+                                    label="Rule Type"
+                                    field-level-help="The detection strategy this rule uses. Each type evaluates a different aspect of the flow: element counts, naming patterns, flow-level properties, loop placement, or fault path coverage."
+                                    value={editingRule.ruleType}
+                                    data-field="ruleType"
+                                    options={ruleTypeOptions}
+                                    onchange={handleCustomRuleFieldChange}
+                                    required
+                                ></lightning-combobox>
+                            </div>
+
+                            <!-- Conditional fields based on Rule Type -->
+
+                            <!-- Element Count Threshold fields -->
+                            <template lwc:if={isCountThresholdType}>
+                                <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                    <lightning-combobox
+                                        label="Target Element Type"
+                                        field-level-help="Which flow element type to count. 'All Elements' counts every element regardless of type."
+                                        value={editingRule.targetElementType}
+                                        data-field="targetElementType"
+                                        options={elementTypeOptions}
+                                        onchange={handleCustomRuleFieldChange}
+                                    ></lightning-combobox>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                    <lightning-input
+                                        type="number"
+                                        label="Threshold (max count)"
+                                        field-level-help="The rule fires when the element count exceeds this number. For example, threshold 5 means 6 or more elements trigger a finding."
+                                        value={editingRule.thresholdValue}
+                                        data-field="thresholdValue"
+                                        onchange={handleCustomRuleFieldChange}
+                                        min="1"
+                                        placeholder="e.g., 5"
+                                    ></lightning-input>
+                                </div>
+                            </template>
+
+                            <!-- Element Name Pattern fields -->
+                            <template lwc:if={isNamePatternType}>
+                                <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                    <lightning-combobox
+                                        label="Target Element Type"
+                                        field-level-help="Which element type to scan for matching names. 'All Elements' checks every element."
+                                        value={editingRule.targetElementType}
+                                        data-field="targetElementType"
+                                        options={elementTypeOptions}
+                                        onchange={handleCustomRuleFieldChange}
+                                    ></lightning-combobox>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                    <lightning-input
+                                        label="Name Pattern (regex)"
+                                        field-level-help="A Java-compatible regular expression to match element API names. Example: '^myDecision\\d+' matches names like myDecision1, myDecision2 (auto-generated names)."
+                                        value={editingRule.namePattern}
+                                        data-field="namePattern"
+                                        onchange={handleCustomRuleFieldChange}
+                                        placeholder="e.g., ^myDecision\\d+"
+                                    ></lightning-input>
+                                </div>
+                            </template>
+
+                            <!-- Flow Property Check fields -->
+                            <template lwc:if={isFlowPropertyType}>
+                                <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                    <lightning-combobox
+                                        label="Flow Property"
+                                        field-level-help="The flow-level property to check. 'Has Description' checks if the flow has a description. Others compare the property value against your expected value."
+                                        value={editingRule.flowProperty}
+                                        data-field="flowProperty"
+                                        options={flowPropertyOptions}
+                                        onchange={handleCustomRuleFieldChange}
+                                    ></lightning-combobox>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                    <lightning-input
+                                        label="Expected Value"
+                                        field-level-help="The value the flow property should have. The rule fires when the actual value does NOT match. Example: 'SystemModeWithSharing' for Run Mode."
+                                        value={editingRule.expectedValue}
+                                        data-field="expectedValue"
+                                        onchange={handleCustomRuleFieldChange}
+                                        placeholder="e.g., SystemModeWithSharing"
+                                    ></lightning-input>
+                                </div>
+                            </template>
+
+                            <!-- Element In Loop Check fields -->
+                            <template lwc:if={isElementInLoopType}>
+                                <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+                                    <lightning-combobox
+                                        label="Target Element Type"
+                                        field-level-help="Which element type to check for loop placement. The rule fires for each element of this type found inside any loop body."
+                                        value={editingRule.targetElementType}
+                                        data-field="targetElementType"
+                                        options={elementTypeOptions}
+                                        onchange={handleCustomRuleFieldChange}
+                                    ></lightning-combobox>
+                                </div>
+                            </template>
+
+                            <!-- Missing Fault Path Check fields -->
+                            <template lwc:if={isMissingFaultPathType}>
+                                <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+                                    <lightning-combobox
+                                        label="Target Element Type"
+                                        field-level-help="Which element type to check for fault connectors. The rule fires for each element that has no fault path configured."
+                                        value={editingRule.targetElementType}
+                                        data-field="targetElementType"
+                                        options={elementTypeOptions}
+                                        onchange={handleCustomRuleFieldChange}
+                                    ></lightning-combobox>
+                                </div>
+                            </template>
+
+                            <!-- Common fields: Category, Severity, Weight -->
+                            <div class="slds-col slds-size_1-of-3 slds-m-bottom_small">
+                                <lightning-combobox
+                                    label="Category"
+                                    field-level-help="Groups this rule under a health score category. Performance and Security categories carry more weight in the overall score."
+                                    value={editingRule.category}
+                                    data-field="category"
+                                    options={categoryOptions}
+                                    onchange={handleCustomRuleFieldChange}
+                                ></lightning-combobox>
+                            </div>
+                            <div class="slds-col slds-size_1-of-3 slds-m-bottom_small">
+                                <lightning-combobox
+                                    label="Severity"
+                                    field-level-help="How serious this violation is. Critical = major issue (highest score deduction), Low = minor suggestion (smallest deduction)."
+                                    value={editingRule.severity}
+                                    data-field="severity"
+                                    options={severityOptions}
+                                    onchange={handleCustomRuleFieldChange}
+                                ></lightning-combobox>
+                            </div>
+                            <div class="slds-col slds-size_1-of-3 slds-m-bottom_small">
+                                <lightning-input
+                                    type="number"
+                                    label="Weight (1-20)"
+                                    field-level-help="How many points each finding deducts from the health score (out of 100). Higher weight = bigger impact. Typical: 3 (low), 5 (medium), 8 (high), 10 (critical)."
+                                    value={editingRule.weight}
+                                    data-field="weight"
+                                    onchange={handleCustomRuleFieldChange}
+                                    min="1" max="20"
+                                ></lightning-input>
+                            </div>
+
+                            <!-- Description and Remediation -->
+                            <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+                                <lightning-textarea
+                                    label="Description (shown when rule triggers)"
+                                    field-level-help="Appears in the findings list when this rule detects an issue. Explain what the rule checks and why it matters for flow quality."
+                                    value={editingRule.description}
+                                    data-field="description"
+                                    onchange={handleCustomRuleFieldChange}
+                                    placeholder="Explain what this rule checks and why it matters..."
+                                ></lightning-textarea>
+                            </div>
+                            <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+                                <lightning-textarea
+                                    label="Remediation (how to fix)"
+                                    field-level-help="Guidance shown alongside the finding to help the admin resolve the issue. Be specific about what changes to make."
+                                    value={editingRule.remediation}
+                                    data-field="remediation"
+                                    onchange={handleCustomRuleFieldChange}
+                                    placeholder="Explain how the admin should fix this finding..."
+                                ></lightning-textarea>
+                            </div>
+
+                            <!-- ======================================= -->
+                            <!-- TEST RULE: Real-time validation         -->
+                            <!-- ======================================= -->
+                            <div class="slds-col slds-size_1-of-1 slds-m-top_small">
+                                <div class="slds-box slds-box_x-small slds-theme_shade">
+                                    <p class="slds-text-title_bold slds-m-bottom_x-small">
+                                        <lightning-icon icon-name="utility:preview" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                        Test Rule Against a Flow
+                                    </p>
+                                    <div class="slds-grid slds-grid_vertical-align-end slds-gutters_small">
+                                        <div class="slds-col slds-grow">
+                                            <lightning-combobox
+                                                label="Select a Flow to Test"
+                                                placeholder="Choose a flow..."
+                                                options={testFlowOptions}
+                                                value={testRuleFlowName}
+                                                onchange={handleTestFlowChange}
+                                                field-level-help="Pick any active flow in your org. The rule will be evaluated against this flow without saving."
+                                            ></lightning-combobox>
+                                        </div>
+                                        <div class="slds-col slds-no-flex">
+                                            <lightning-button
+                                                variant="neutral"
+                                                label="Test Rule"
+                                                icon-name="utility:play"
+                                                onclick={handleTestRule}
+                                                disabled={testRuleButtonDisabled}
+                                            ></lightning-button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Test loading -->
+                                    <template lwc:if={testRuleLoading}>
+                                        <div class="slds-grid slds-grid_vertical-align-center slds-m-top_small">
+                                            <lightning-spinner alternative-text="Testing rule..." size="small" class="slds-m-right_small"></lightning-spinner>
+                                            <span class="slds-text-body_small slds-text-color_weak">Running rule against flow...</span>
+                                        </div>
+                                    </template>
+
+                                    <!-- Test results -->
+                                    <template lwc:if={hasTestResult}>
+                                        <div class={testResultBannerClass}>
+                                            <div class="slds-grid slds-grid_vertical-align-center">
+                                                <lightning-icon icon-name={testResultIconName} size="x-small" variant={testResultVariant} class="slds-m-right_x-small"></lightning-icon>
+                                                <span class="slds-text-body_regular"><strong>{testResultMessage}</strong></span>
+                                            </div>
+                                            <template lwc:if={hasTestFindings}>
+                                                <div class="slds-m-top_x-small">
+                                                    <template for:each={testRuleResult.findings} for:item="finding">
+                                                        <div key={finding.key} class="slds-p-vertical_xx-small slds-border_bottom">
+                                                            <span class={finding.severityBadgeClass}>{finding.severity}</span>
+                                                            <template lwc:if={finding.hasElement}>
+                                                                <span class="slds-m-left_x-small slds-text-body_small">
+                                                                    <strong>{finding.elementName}</strong> ({finding.elementType})
+                                                                </span>
+                                                            </template>
+                                                            <p class="slds-text-body_small slds-m-top_xx-small">{finding.description}</p>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <footer class="slds-modal__footer">
+                        <lightning-button label="Cancel" onclick={handleCloseCustomRuleModal}></lightning-button>
+                        <lightning-button
+                            variant="brand"
+                            label="Save Rule"
+                            onclick={handleSaveCustomRule}
+                            class="slds-m-left_x-small"
+                        ></lightning-button>
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </template>
+    </template>
+</template>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>DML Inside Loop</label>
+    <protected>false</protected>
+    <values>
+        <field>Rule_Id__c</field>
+        <value xsi:type="xsd:string">PERF-001</value>
+    </values>
+    <values>
+        <field>Category__c</field>
+        <value xsi:type="xsd:string">Performance</value>
+    </values>
+    <values>
+        <field>Severity__c</field>
+        <value xsi:type="xsd:string">Critical</value>
+    </values>
+    <values>
+        <field>Weight__c</field>
+        <value xsi:type="xsd:double">15.0</value>
+    </values>
+    <values>
+        <field>Detection_Class__c</field>
+        <value xsi:type="xsd:string">DmlInLoopRule</value>
+    </values>
+    <values>
+        <field>Description__c</field>
+        <value xsi:type="xsd:string">Detects Create/Update/Delete Records elements inside Loop elements. Each iteration consumes a DML statement against the governor limit (150/transaction).</value>
+    </values>
+    <values>
+        <field>Remediation__c</field>
+        <value xsi:type="xsd:string">Collect records in a collection variable inside the loop, then perform a single bulk DML operation after the loop.</value>
+    </values>
+    <values>
+        <field>Is_Active__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>Max_Deduction__c</field>
+        <value xsi:type="xsd:double">25.0</value>
+    </values>
+</CustomMetadata>

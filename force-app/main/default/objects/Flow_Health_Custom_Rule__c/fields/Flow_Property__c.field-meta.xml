@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Flow_Property__c</fullName>
+    <label>Flow Property</label>
+    <type>Picklist</type>
+    <required>false</required>
+    <description>For Flow Property Check rules: which flow-level property to check</description>
+    <valueSet>
+        <restricted>false</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value><fullName>Has Description</fullName><default>false</default><label>Has Description</label></value>
+            <value><fullName>Process Type</fullName><default>false</default><label>Process Type</label></value>
+            <value><fullName>Run Mode</fullName><default>false</default><label>Run Mode</label></value>
+            <value><fullName>Trigger Type</fullName><default>false</default><label>Trigger Type</label></value>
+            <value><fullName>API Version</fullName><default>false</default><label>API Version</label></value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

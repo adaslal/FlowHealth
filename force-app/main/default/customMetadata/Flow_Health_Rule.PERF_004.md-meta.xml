@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Unbounded Get Records</label>
+    <protected>false</protected>
+    <values>
+        <field>Rule_Id__c</field>
+        <value xsi:type="xsd:string">PERF-004</value>
+    </values>
+    <values>
+        <field>Category__c</field>
+        <value xsi:type="xsd:string">Performance</value>
+    </values>
+    <values>
+        <field>Severity__c</field>
+        <value xsi:type="xsd:string">High</value>
+    </values>
+    <values>
+        <field>Weight__c</field>
+        <value xsi:type="xsd:double">10.0</value>
+    </values>
+    <values>
+        <field>Detection_Class__c</field>
+        <value xsi:type="xsd:string">UnboundedGetRecordsRule</value>
+    </values>
+    <values>
+        <field>Description__c</field>
+        <value xsi:type="xsd:string">Detects Get Records elements that retrieve multiple records without any filter conditions. Could return all records of an object type, causing heap or CPU limit exceptions.</value>
+    </values>
+    <values>
+        <field>Remediation__c</field>
+        <value xsi:type="xsd:string">Add filter conditions to limit the result set. Filter by record ownership, date ranges, or related record IDs.</value>
+    </values>
+    <values>
+        <field>Is_Active__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>Max_Deduction__c</field>
+        <value xsi:type="xsd:double">15.0</value>
+    </values>
+</CustomMetadata>

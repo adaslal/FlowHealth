@@ -1,0 +1,779 @@
+/* Flow Health App - Premium styling for health analysis UI */
+
+:host {
+    --card-spacing: 1rem;
+    --color-critical: #c23934;
+    --color-high: #e87400;
+    --color-medium: #f4bc25;
+    --color-low: #0176d3;
+    --color-excellent: #2e844a;
+    --color-good: #2e844a;
+    --color-fair: #e87400;
+    --color-needs-work: #c23934;
+    --ring-size: 160px;
+    display: block;
+    background: #f4f6f9;
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+/* =========================================================================
+   APP LOGO
+   ========================================================================= */
+
+.app-logo {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+}
+
+.app-logo svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 1px 3px rgba(1, 118, 211, 0.3));
+}
+
+/* =========================================================================
+   ELEMENT BREAKDOWN CARDS
+   ========================================================================= */
+
+.element-card {
+    border-radius: 0.5rem;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    border: 1px solid #e5e7eb;
+}
+
+.element-card-clickable {
+    cursor: pointer;
+}
+
+.element-card-clickable:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-color: #0176d3;
+}
+
+.element-card-selected {
+    border-color: #0176d3;
+    background: #f0f7ff;
+    box-shadow: 0 0 0 1px #0176d3;
+}
+
+/* =========================================================================
+   ELEMENT NAMES PANEL (drill-down below tiles)
+   ========================================================================= */
+
+.element-names-panel {
+    background: #f8f9fb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    animation: slideDown 0.2s ease-out;
+}
+
+.element-names-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.element-name-item {
+    display: inline-flex;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    transition: background 0.15s ease;
+}
+
+.element-name-item:hover {
+    background: #eef1f6;
+}
+
+.element-api-name {
+    font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+    font-size: 0.78rem;
+    color: #3e3e3c;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =========================================================================
+   SCORE HERO SECTION
+   ========================================================================= */
+
+.score-hero {
+    background: linear-gradient(135deg, #f8f9fb 0%, #eef1f6 100%);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    border: 1px solid #e5e7eb;
+}
+
+/* =========================================================================
+   SCORE RING (SVG-based circular progress)
+   ========================================================================= */
+
+.score-ring-container {
+    position: relative;
+    width: var(--ring-size);
+    height: var(--ring-size);
+    margin: 0 auto;
+}
+
+.score-ring {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.score-ring-bg {
+    fill: none;
+    stroke: #e5e7eb;
+    stroke-width: 6;
+}
+
+.score-ring-fill {
+    fill: none;
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s ease-out;
+}
+
+.score-ring-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    line-height: 1;
+}
+
+.score-number {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.score-label {
+    display: block;
+    font-size: 0.8rem;
+    color: #706e6b;
+    margin-top: 0.15rem;
+}
+
+/* =========================================================================
+   GRADE BADGE
+   ========================================================================= */
+
+.grade-badge {
+    display: inline-block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.2rem 0.8rem;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid currentColor;
+    letter-spacing: 0.03em;
+}
+
+/* =========================================================================
+   SEVERITY BREAKDOWN CARDS
+   ========================================================================= */
+
+.severity-card {
+    text-align: center;
+    border-radius: 0.5rem;
+    padding: 0.75rem 0.5rem;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.severity-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+}
+
+.severity-count {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+}
+
+.severity-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* Severity card color accents */
+.severity-card-critical {
+    border-bottom: 3px solid var(--color-critical);
+}
+
+.severity-card-critical .severity-count {
+    color: var(--color-critical);
+}
+
+.severity-card-critical .severity-label {
+    color: var(--color-critical);
+}
+
+.severity-card-high {
+    border-bottom: 3px solid var(--color-high);
+}
+
+.severity-card-high .severity-count {
+    color: var(--color-high);
+}
+
+.severity-card-high .severity-label {
+    color: var(--color-high);
+}
+
+.severity-card-medium {
+    border-bottom: 3px solid var(--color-medium);
+}
+
+.severity-card-medium .severity-count {
+    color: var(--color-medium);
+}
+
+.severity-card-medium .severity-label {
+    color: var(--color-medium);
+}
+
+.severity-card-low {
+    border-bottom: 3px solid var(--color-low);
+}
+
+.severity-card-low .severity-count {
+    color: var(--color-low);
+}
+
+.severity-card-low .severity-label {
+    color: var(--color-low);
+}
+
+/* =========================================================================
+   FINDING CARDS
+   ========================================================================= */
+
+.finding-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    transition: box-shadow 0.2s ease;
+}
+
+.finding-card:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07);
+}
+
+/* =========================================================================
+   FINDINGS SUMMARY TABLE (compact at-a-glance view)
+   ========================================================================= */
+
+.findings-summary-table-wrapper {
+    max-height: 20rem;
+    overflow-y: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+}
+
+.findings-summary-table {
+    margin-bottom: 0;
+}
+
+.findings-summary-row {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.findings-summary-row:hover {
+    background-color: #f3f3f3;
+}
+
+/* Severity left-border accent on table rows */
+.severity-row-critical {
+    border-left: 3px solid var(--color-critical);
+}
+
+.severity-row-high {
+    border-left: 3px solid var(--color-high);
+}
+
+.severity-row-medium {
+    border-left: 3px solid var(--color-medium);
+}
+
+.severity-row-low {
+    border-left: 3px solid var(--color-low);
+}
+
+/* =========================================================================
+   REMEDIATION DETAIL CARDS (description + fix sections)
+   ========================================================================= */
+
+.remediation-detail-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, border-color 0.3s ease;
+}
+
+.remediation-detail-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.remediation-card-header {
+    background: #fafaf9;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.remediation-card-body {
+    padding: 0.75rem 1rem;
+}
+
+.finding-description-section {
+    padding: 0.5rem 0;
+}
+
+/* Highlight animation for scroll-to target */
+.finding-card-highlight {
+    border-color: #0176d3;
+    box-shadow: 0 0 0 2px rgba(1, 118, 211, 0.4);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* =========================================================================
+   STRATEGIC ACTION PLAN (expandable insight cards)
+   ========================================================================= */
+
+.strategic-tier-header {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+}
+
+.strategic-tier-critical {
+    background: #fef0ef;
+    border-left: 4px solid var(--color-critical);
+}
+
+.strategic-tier-other {
+    background: #f3f3f3;
+    border-left: 4px solid var(--color-low);
+}
+
+.strategic-insight-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease;
+}
+
+.strategic-insight-card:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07);
+}
+
+.strategic-card-critical {
+    border-left: 3px solid var(--color-critical);
+}
+
+.strategic-card-other {
+    border-left: 3px solid #e5e7eb;
+}
+
+.strategic-card-header {
+    padding: 0.6rem 0.75rem;
+    background: #fafaf9;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.strategic-card-header:hover {
+    background: #f0f0f0;
+}
+
+.strategic-card-body {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #e5e7eb;
+    background: #ffffff;
+}
+
+/* =========================================================================
+   REMEDIATION BOX
+   ========================================================================= */
+
+.remediation-box {
+    background: #f3f3f3;
+    border-left: 3px solid #0176d3;
+    border-radius: 0 0.25rem 0.25rem 0;
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    align-items: flex-start;
+}
+
+/* =========================================================================
+   SEVERITY BADGES (inline tags in findings)
+   ========================================================================= */
+
+.severity-badge-critical {
+    background: var(--color-critical);
+    color: #ffffff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.severity-badge-high {
+    background: var(--color-high);
+    color: #ffffff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.severity-badge-medium {
+    background: var(--color-medium);
+    color: #3e3e3c;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.severity-badge-low {
+    background: var(--color-low);
+    color: #ffffff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+/* =========================================================================
+   SCORE COLOR CLASSES (for category scores in accordion)
+   ========================================================================= */
+
+.score-excellent {
+    color: var(--color-excellent);
+    font-weight: 600;
+}
+
+.score-good {
+    color: var(--color-good);
+    font-weight: 600;
+}
+
+.score-fair {
+    color: var(--color-fair);
+    font-weight: 600;
+}
+
+.score-needs-work {
+    color: var(--color-needs-work);
+    font-weight: 600;
+}
+
+.score-critical {
+    color: var(--color-critical);
+    font-weight: 600;
+}
+
+/* =========================================================================
+   VIEW TOGGLE (Sprint 3)
+   ========================================================================= */
+
+.view-toggle {
+    display: flex;
+    gap: 0.5rem;
+    padding-bottom: 0;
+}
+
+.view-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.55rem 1.25rem;
+    border: 1px solid #d8dce6;
+    border-radius: 0.375rem;
+    background: #ffffff;
+    color: #706e6b;
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.view-toggle-btn:hover {
+    color: #0176d3;
+    border-color: #0176d3;
+    background: #f0f7ff;
+}
+
+.view-toggle-btn-active {
+    color: #0176d3;
+    background: rgba(1, 118, 211, 0.08);
+    border-color: #0176d3;
+    font-weight: 700;
+}
+
+.view-toggle-btn-active:hover {
+    background: rgba(1, 118, 211, 0.12);
+    border-color: #0176d3;
+    color: #0176d3;
+}
+
+/* =========================================================================
+   BULK SCANNING PROGRESS (Sprint 3)
+   ========================================================================= */
+
+.bulk-progress-panel {
+    background: linear-gradient(135deg, #f3f7ff 0%, #eef1f6 100%);
+    border: 1px solid #b4c7e7;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 4px rgba(1, 118, 211, 0.08);
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #0176d3, #0b8dff);
+    border-radius: 0.25rem;
+    transition: width 0.3s ease;
+}
+
+/* =========================================================================
+   SUMMARY STAT CARDS (Sprint 3)
+   ========================================================================= */
+
+.summary-stat-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1.25rem 1rem;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.summary-stat-card:hover {
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+}
+
+.stat-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #706e6b;
+    margin-bottom: 0.5rem;
+}
+
+.stat-value {
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+    color: #3e3e3c;
+}
+
+.stat-value-critical {
+    color: var(--color-critical);
+}
+
+.stat-sublabel {
+    font-size: 0.78rem;
+    color: #706e6b;
+}
+
+/* =========================================================================
+   GRADE DISTRIBUTION CHART (Sprint 3)
+   ========================================================================= */
+
+.grade-chart-container {
+    width: 100%;
+}
+
+.grade-chart-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 40px;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.grade-chart-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #3e3e3c;
+    text-align: right;
+}
+
+.grade-bar-wrapper {
+    background: #f3f3f3;
+    border-radius: 0.25rem;
+    height: 28px;
+    overflow: hidden;
+}
+
+.grade-bar {
+    height: 100%;
+    border-radius: 0.25rem;
+    transition: width 0.5s ease;
+    min-width: 2px;
+}
+
+.grade-chart-count {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #3e3e3c;
+    text-align: center;
+}
+
+/* =========================================================================
+   BULK CARD CONTAINER (Sprint 3 - white card wrapper)
+   ========================================================================= */
+
+.bulk-card-container {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* =========================================================================
+   BULK EMPTY STATE (Sprint 3)
+   ========================================================================= */
+
+.bulk-empty-state {
+    background: #f8f9fb;
+    border: 1px dashed #d8dce6;
+    border-radius: 0.75rem;
+}
+
+/* =========================================================================
+   SPRINT 4: EXPORT BUTTONS
+   ========================================================================= */
+
+.export-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+/* =========================================================================
+   SPRINT 4: TREND SECTION (Single Flow)
+   ========================================================================= */
+
+.trend-section {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.trend-chart-wrapper {
+    width: 100%;
+    max-width: 420px;
+}
+
+.trend-chart-svg {
+    width: 100%;
+    height: auto;
+}
+
+.trend-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.6rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.trend-badge-up {
+    background: rgba(4, 132, 75, 0.1);
+    color: #04844B;
+}
+
+.trend-badge-down {
+    background: rgba(194, 57, 52, 0.1);
+    color: #C23934;
+}
+
+.trend-badge-neutral {
+    background: rgba(112, 110, 107, 0.1);
+    color: #706e6b;
+}
+
+/* =========================================================================
+   SPRINT 4: ORG TREND (Bulk Dashboard)
+   ========================================================================= */
+
+.org-trend-section {
+    background: #f8fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+}
+
+.org-trend-chart-wrapper {
+    width: 100%;
+}
+
+.org-trend-chart-svg {
+    width: 100%;
+    height: auto;
+}
+
+/* =========================================================================
+   SPRINT 4: SETTINGS VIEW
+   ========================================================================= */
+
+.settings-card-container {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}

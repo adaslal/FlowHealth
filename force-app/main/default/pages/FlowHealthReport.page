@@ -1,0 +1,375 @@
+<apex:page controller="FlowHealthReportController"
+           renderAs="pdf"
+           showHeader="false"
+           sidebar="false"
+           applyHtmlTag="false"
+           applyBodyTag="false"
+           standardStylesheets="false">
+<html>
+<head>
+    <style type="text/css">
+        /* ===== PDF GLOBAL STYLES (CSS 2.1 for Flying Saucer) ===== */
+        @page {
+            size: A4;
+            margin: 1.5cm 2cm;
+            @bottom-center {
+                content: "Flow Health Report - Page " counter(page) " of " counter(pages);
+                font-size: 8pt;
+                color: #706e6b;
+            }
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 10pt;
+            color: #181818;
+            line-height: 1.4;
+        }
+
+        /* ===== HEADER ===== */
+        .report-header {
+            border-bottom: 3px solid #0176d3;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+
+        .report-title {
+            font-size: 22pt;
+            font-weight: bold;
+            color: #0176d3;
+            margin: 0 0 4px 0;
+        }
+
+        .report-subtitle {
+            font-size: 11pt;
+            color: #706e6b;
+            margin: 0;
+        }
+
+        .report-meta {
+            font-size: 9pt;
+            color: #706e6b;
+            margin-top: 6px;
+        }
+
+        /* ===== SCORE SECTION ===== */
+        .score-section {
+            background: #f4f6f9;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+        }
+
+        .score-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .score-number {
+            font-size: 42pt;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        .score-out-of {
+            font-size: 14pt;
+            color: #706e6b;
+        }
+
+        .grade-badge {
+            display: inline-block;
+            font-size: 11pt;
+            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 4px;
+            color: #ffffff;
+        }
+
+        /* ===== SUMMARY TABLE ===== */
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .summary-table td {
+            border: 1px solid #e5e7eb;
+            padding: 8px 12px;
+            text-align: center;
+            width: 25%;
+        }
+
+        .summary-label {
+            font-size: 8pt;
+            color: #706e6b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-value {
+            font-size: 18pt;
+            font-weight: bold;
+            margin: 4px 0;
+        }
+
+        .color-critical { color: #C23934; }
+        .color-high { color: #E87400; }
+        .color-medium { color: #F4BC25; }
+        .color-low { color: #0176D3; }
+
+        /* ===== SECTION HEADERS ===== */
+        .section-header {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #0176d3;
+            border-bottom: 2px solid #0176d3;
+            padding-bottom: 4px;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+
+        .category-header {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #181818;
+            background: #f4f6f9;
+            padding: 6px 10px;
+            margin-top: 14px;
+            margin-bottom: 8px;
+            border-left: 4px solid #0176d3;
+        }
+
+        /* ===== FINDINGS TABLE ===== */
+        .findings-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+        }
+
+        .findings-table th {
+            background: #f4f6f9;
+            border: 1px solid #d8dce6;
+            padding: 6px 8px;
+            font-size: 8pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #706e6b;
+            text-align: left;
+        }
+
+        .findings-table td {
+            border: 1px solid #e5e7eb;
+            padding: 6px 8px;
+            font-size: 9pt;
+            vertical-align: top;
+        }
+
+        .severity-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            color: #ffffff;
+            font-size: 8pt;
+            font-weight: bold;
+        }
+
+        .remediation-cell {
+            background: #fafbfc;
+            font-style: italic;
+            color: #444;
+        }
+
+        /* ===== FLOW INFO ===== */
+        .flow-info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+        }
+
+        .flow-info-table td {
+            padding: 4px 10px;
+            font-size: 9pt;
+        }
+
+        .flow-info-label {
+            color: #706e6b;
+            font-weight: bold;
+            width: 140px;
+            text-transform: uppercase;
+            font-size: 8pt;
+            letter-spacing: 0.5px;
+        }
+
+        /* ===== FOOTER ===== */
+        .report-footer {
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid #d8dce6;
+            font-size: 8pt;
+            color: #706e6b;
+            text-align: center;
+        }
+
+        /* ===== NO FINDINGS ===== */
+        .no-findings {
+            background: #04844B;
+            color: #ffffff;
+            padding: 16px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 12pt;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- REPORT HEADER -->
+    <div class="report-header">
+        <p class="report-title">Flow Health Report</p>
+        <apex:outputPanel rendered="{!snapshot != null}">
+            <p class="report-subtitle">
+                {!snapshot.Flow_Label__c}
+                <span style="color: #706e6b; font-weight: normal;">
+                    ({!snapshot.Flow_Developer_Name__c})
+                </span>
+            </p>
+            <p class="report-meta">
+                Generated: {!reportDate}
+                &nbsp;&bull;&nbsp;
+                Process Type: {!snapshot.Process_Type__c}
+                &nbsp;&bull;&nbsp;
+                Scan Type: {!snapshot.Scan_Type__c}
+            </p>
+        </apex:outputPanel>
+    </div>
+
+    <apex:outputPanel rendered="{!snapshot != null}">
+
+        <!-- SCORE SECTION -->
+        <div class="score-section">
+            <table class="score-table">
+                <tr>
+                    <td style="width: 200px; text-align: center;">
+                        <span class="score-number" style="color: {!scoreColorHex};">
+                            {!FLOOR(snapshot.Score__c)}
+                        </span>
+                        <span class="score-out-of"> / 100</span>
+                        <br/>
+                        <span class="grade-badge" style="background: {!scoreColorHex};">
+                            Grade {!snapshot.Grade__c} &mdash; {!gradeLabel}
+                        </span>
+                    </td>
+                    <td style="vertical-align: middle; padding-left: 20px;">
+                        <table class="summary-table">
+                            <tr>
+                                <td>
+                                    <div class="summary-label">Critical</div>
+                                    <div class="summary-value color-critical">
+                                        {!FLOOR(snapshot.Critical_Count__c)}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="summary-label">High</div>
+                                    <div class="summary-value color-high">
+                                        {!FLOOR(snapshot.High_Count__c)}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="summary-label">Medium</div>
+                                    <div class="summary-value color-medium">
+                                        {!FLOOR(snapshot.Medium_Count__c)}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="summary-label">Low</div>
+                                    <div class="summary-value color-low">
+                                        {!FLOOR(snapshot.Low_Count__c)}
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                        <div style="text-align: center; font-size: 9pt; color: #706e6b;">
+                            {!FLOOR(snapshot.Total_Findings__c)} total finding(s)
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- FINDINGS BY CATEGORY -->
+        <apex:outputPanel rendered="{!hasFindings}">
+            <div class="section-header">Health Findings</div>
+
+            <apex:repeat value="{!categoryOrder}" var="cat">
+                <div class="category-header">{!cat}</div>
+                <table class="findings-table">
+                    <tr>
+                        <th style="width: 60px;">Severity</th>
+                        <th style="width: 80px;">Rule</th>
+                        <th>Description</th>
+                        <th style="width: 100px;">Element</th>
+                    </tr>
+                    <apex:repeat value="{!findingsByCategory[cat]}" var="f">
+                        <tr>
+                            <td>
+                                <span class="severity-badge"
+                                      style="background: {!f.severityColor};">
+                                    {!f.severity}
+                                </span>
+                            </td>
+                            <td>
+                                <strong>{!f.ruleId}</strong><br/>
+                                <span style="font-size: 8pt; color: #706e6b;">{!f.ruleName}</span>
+                            </td>
+                            <td>
+                                {!f.description}
+                                <br/>
+                                <span class="remediation-cell">
+                                    <strong>Fix:</strong> {!f.remediation}
+                                </span>
+                            </td>
+                            <td>
+                                <apex:outputPanel rendered="{!f.hasElement}">
+                                    <strong>{!f.elementName}</strong><br/>
+                                    <span style="font-size: 8pt; color: #706e6b;">
+                                        ({!f.elementType})
+                                    </span>
+                                </apex:outputPanel>
+                                <apex:outputPanel rendered="{!NOT(f.hasElement)}">
+                                    <span style="color: #706e6b;">Flow-level</span>
+                                </apex:outputPanel>
+                            </td>
+                        </tr>
+                    </apex:repeat>
+                </table>
+            </apex:repeat>
+        </apex:outputPanel>
+
+        <!-- NO FINDINGS -->
+        <apex:outputPanel rendered="{!NOT(hasFindings)}">
+            <div class="no-findings">
+                No issues found! This flow follows all best practices.
+            </div>
+        </apex:outputPanel>
+
+    </apex:outputPanel>
+
+    <!-- NO SNAPSHOT FOUND -->
+    <apex:outputPanel rendered="{!snapshot == null}">
+        <div style="text-align: center; padding: 40px; color: #706e6b;">
+            <p style="font-size: 14pt;">No snapshot data found.</p>
+            <p>Please run a flow analysis first, then export the report.</p>
+        </div>
+    </apex:outputPanel>
+
+    <!-- FOOTER -->
+    <div class="report-footer">
+        Generated by Flow Health &bull; Salesforce Flow Best Practice Analyzer
+    </div>
+
+</body>
+</html>
+</apex:page>

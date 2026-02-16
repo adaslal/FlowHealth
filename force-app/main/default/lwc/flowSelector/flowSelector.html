@@ -1,0 +1,46 @@
+<template>
+    <div class="slds-card slds-p-around_medium">
+
+        <!-- Header -->
+        <div class="slds-m-bottom_small">
+            <h2 class="slds-text-heading_small slds-text-color_default">
+                <lightning-icon icon-name="standard:flow" size="small" class="slds-m-right_x-small"></lightning-icon>
+                Select a Flow to Analyze
+            </h2>
+        </div>
+
+        <!-- Loading State -->
+        <template lwc:if={isLoading}>
+            <div class="slds-align_absolute-center slds-p-around_medium">
+                <lightning-spinner alternative-text="Loading flows..." size="small"></lightning-spinner>
+                <span class="slds-m-left_small slds-text-color_weak">Loading flows from your org...</span>
+            </div>
+        </template>
+
+        <!-- Error State -->
+        <template lwc:if={error}>
+            <div class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small" role="alert">
+                <span class="slds-assistive-text">error</span>
+                <h2>{error}</h2>
+            </div>
+        </template>
+
+        <!-- Flow Selector -->
+        <template lwc:if={hasFlows}>
+            <lightning-combobox
+                name="flowPicker"
+                label="Active Flows"
+                placeholder={placeholder}
+                value={selectedFlow}
+                options={filteredOptions}
+                onchange={handleFlowChange}
+                variant="label-hidden"
+                class="slds-m-bottom_x-small"
+            ></lightning-combobox>
+            <p class="slds-text-body_small slds-text-color_weak">
+                {flowCount} active flows found in your org
+            </p>
+        </template>
+
+    </div>
+</template>

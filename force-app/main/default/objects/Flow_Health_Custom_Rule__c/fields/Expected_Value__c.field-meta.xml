@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Expected_Value__c</fullName>
+    <label>Expected Value</label>
+    <type>Text</type>
+    <length>255</length>
+    <required>false</required>
+    <description>For Flow Property Check rules: the expected value. Rule fires when property does NOT match (e.g., "SystemModeWithSharing" for Run Mode).</description>
+</CustomField>

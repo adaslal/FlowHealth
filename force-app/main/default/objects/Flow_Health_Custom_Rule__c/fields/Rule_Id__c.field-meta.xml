@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Rule_Id__c</fullName>
+    <label>Rule ID</label>
+    <type>Text</type>
+    <length>20</length>
+    <required>true</required>
+    <unique>true</unique>
+    <externalId>true</externalId>
+    <description>Unique identifier for this custom rule (e.g., CUST-001)</description>
+</CustomField>

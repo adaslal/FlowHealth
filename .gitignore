@@ -1,0 +1,11 @@
+# Salesforce specific junk
+.sfdx/
+.vscode/
+bin/
+
+# OS specific junk
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env

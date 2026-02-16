@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Target_Element_Type__c</fullName>
+    <label>Target Element Type</label>
+    <type>Picklist</type>
+    <required>false</required>
+    <description>Which element type this rule inspects (for element-specific rules)</description>
+    <valueSet>
+        <restricted>false</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value><fullName>All Elements</fullName><default>true</default><label>All Elements</label></value>
+            <value><fullName>Record Creates</fullName><default>false</default><label>Record Creates</label></value>
+            <value><fullName>Record Updates</fullName><default>false</default><label>Record Updates</label></value>
+            <value><fullName>Record Deletes</fullName><default>false</default><label>Record Deletes</label></value>
+            <value><fullName>Record Lookups</fullName><default>false</default><label>Record Lookups</label></value>
+            <value><fullName>Loops</fullName><default>false</default><label>Loops</label></value>
+            <value><fullName>Decisions</fullName><default>false</default><label>Decisions</label></value>
+            <value><fullName>Assignments</fullName><default>false</default><label>Assignments</label></value>
+            <value><fullName>Screens</fullName><default>false</default><label>Screens</label></value>
+            <value><fullName>Action Calls</fullName><default>false</default><label>Action Calls</label></value>
+            <value><fullName>Subflows</fullName><default>false</default><label>Subflows</label></value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

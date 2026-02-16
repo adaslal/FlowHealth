@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Findings_JSON__c</fullName>
+    <label>Findings JSON</label>
+    <description>Serialized JSON of all findings from the analysis. Used for PDF report generation and historical detail drill-down.</description>
+    <type>LongTextArea</type>
+    <length>131072</length>
+    <visibleLines>5</visibleLines>
+</CustomField>

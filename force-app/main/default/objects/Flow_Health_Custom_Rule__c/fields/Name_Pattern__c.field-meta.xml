@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Name_Pattern__c</fullName>
+    <label>Name Pattern</label>
+    <type>Text</type>
+    <length>255</length>
+    <required>false</required>
+    <description>For Element Name Pattern rules: regex pattern that element names should NOT match (e.g., "^myRule_\\d+" flags auto-generated names)</description>
+</CustomField>
