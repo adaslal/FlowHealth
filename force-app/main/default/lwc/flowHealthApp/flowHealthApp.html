@@ -343,12 +343,13 @@
                                                 <span class="slds-text-body_small slds-text-color_weak"> ({row.ruleId})</span>
                                             </td>
                                             <td class="slds-text-body_small">{row.category}</td>
-                                            <td class="slds-text-body_small slds-truncate" title={row.elementName}>
+                                            <td class="slds-text-body_small slds-truncate" title={row.elementLabel}>
                                                 <template lwc:if={row.hasElement}>
                                                     {row.elementName}
+                                                    <span class="slds-text-color_weak"> ({row.elementType})</span>
                                                 </template>
                                                 <template lwc:else>
-                                                    <span class="slds-text-color_weak">—</span>
+                                                    <span class="slds-badge slds-badge_inverse" style="font-size: 0.6rem;">Flow-Level</span>
                                                 </template>
                                             </td>
                                         </tr>

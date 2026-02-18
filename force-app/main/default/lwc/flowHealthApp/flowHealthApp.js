@@ -290,24 +290,31 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
     get findingsSummaryTable() {
         if (!this.findingsDisplay || this.findingsDisplay.length === 0) return [];
 
-        const severityOrder = { 'Critical': 0, 'High': 1, 'Medium': 2, 'Low': 3 };
-        let globalIdx = 0;
+        // Severity weights — Critical always on top, matching strategic priority weights
+        const severityWeight = { 'Critical': 100, 'High': 50, 'Medium': 10, 'Low': 1 };
 
+        // Flatten all findings across categories
         const flat = [];
         this.findingsDisplay.forEach(cat => {
             cat.findings.forEach(f => {
                 flat.push({
                     ...f,
-                    anchorKey: 'finding-card-' + globalIdx,
                     tableRowClass: 'findings-summary-row severity-row-' + (f.severity || 'Medium').toLowerCase(),
-                    idx: globalIdx
+                    sortWeight: severityWeight[f.severity] || 0
                 });
-                globalIdx++;
             });
         });
 
-        flat.sort((a, b) => (severityOrder[a.severity] || 99) - (severityOrder[b.severity] || 99));
-        return flat;
+        // Sort by weight descending (Critical 100 → High 50 → Medium 10 → Low 1)
+        flat.sort((a, b) => b.sortWeight - a.sortWeight);
+
+        // Assign idx, anchorKey, and elementLabel AFTER sorting
+        return flat.map((item, idx) => ({
+            ...item,
+            idx: idx + 1,
+            elementLabel: item.hasElement ? item.elementName + ' (' + item.elementType + ')' : 'Flow-Level Rule',
+            anchorKey: 'finding-card-' + idx
+        }));
     }
 
     /**
@@ -1825,23 +1832,55 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
     }
 
     get triggerTypeLabel() {
-        const labels = {
+        if (!this.flowDetail) return 'N/A';
+
+        // If the Tooling API returned a trigger type, use it
+        const triggerLabels = {
             'RecordBeforeSave': 'Before Save',
             'RecordAfterSave': 'After Save',
             'RecordBeforeDelete': 'Before Delete',
             'Scheduled': 'Scheduled',
             'PlatformEvent': 'Platform Event'
         };
-        return (this.flowDetail && labels[this.flowDetail.triggerType]) || (this.flowDetail ? this.flowDetail.triggerType : 'N/A');
+        if (this.flowDetail.triggerType && triggerLabels[this.flowDetail.triggerType]) {
+            return triggerLabels[this.flowDetail.triggerType];
+        }
+
+        // Smart fallback based on processType when triggerType is null
+        const fallbackByProcessType = {
+            'Flow': 'User-Launched (Screen)',
+            'AutoLaunchedFlow': 'Invocable / Subflow',
+            'RecordTriggeredFlow': 'Record Change',
+            'Workflow': 'Record Change',
+            'CustomEvent': 'Platform Event',
+            'InvocableProcess': 'Invocable Process'
+        };
+        return fallbackByProcessType[this.flowDetail.processType] || this.flowDetail.triggerType || 'N/A';
     }
 
     get runModeLabel() {
-        const labels = {
+        if (!this.flowDetail) return 'Default';
+
+        // If the Tooling API returned a run mode, use it
+        const runModeLabels = {
             'SystemModeWithSharing': 'System Mode (With Sharing)',
             'SystemModeWithoutSharing': 'System Mode (Without Sharing)',
             'DefaultMode': 'Default Mode (User Context)'
         };
-        return (this.flowDetail && labels[this.flowDetail.runInMode]) || (this.flowDetail ? this.flowDetail.runInMode : 'Default');
+        if (this.flowDetail.runInMode && runModeLabels[this.flowDetail.runInMode]) {
+            return runModeLabels[this.flowDetail.runInMode];
+        }
+
+        // Smart fallback based on processType when runInMode is null
+        const fallbackByProcessType = {
+            'Flow': 'User Context',
+            'AutoLaunchedFlow': 'System Context',
+            'RecordTriggeredFlow': 'System Context',
+            'Workflow': 'System Context',
+            'CustomEvent': 'System Context',
+            'InvocableProcess': 'System Context'
+        };
+        return fallbackByProcessType[this.flowDetail.processType] || this.flowDetail.runInMode || 'Default';
     }
 
     get hasDescription() {
