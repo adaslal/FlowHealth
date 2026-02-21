@@ -90,6 +90,17 @@ public class FlowDiffResult {
             );
         }
 
+        // Count functional vs cosmetic
+        this.summary.functionalChanges = 0;
+        this.summary.cosmeticChanges = 0;
+        for (ChangeEntry c : this.changes) {
+            if (c.isCosmetic != null && c.isCosmetic) {
+                this.summary.cosmeticChanges++;
+            } else {
+                this.summary.functionalChanges++;
+            }
+        }
+
         // Derive risk assessment
         this.summary.hasBreakingChanges = false;
         for (ChangeEntry c : this.changes) {
@@ -123,6 +134,9 @@ public class FlowDiffResult {
         @AuraEnabled public String newValue;          // New value (for Modified)
         @AuraEnabled public String riskLevel;         // Critical, High, Medium, Low, Info
         @AuraEnabled public String riskReason;        // Why this risk level
+        @AuraEnabled public Boolean isCosmetic;       // true if Logic Signature unchanged (layout-only change)
+        @AuraEnabled public String oldLogicSignature;  // Signature of old version element
+        @AuraEnabled public String newLogicSignature;  // Signature of new version element
 
         public ChangeEntry(String changeType, String category) {
             this.changeType = changeType;
@@ -152,6 +166,13 @@ public class FlowDiffResult {
             this.riskReason = riskReason;
             return this;
         }
+
+        public ChangeEntry withSemantics(Boolean isCosmetic, String oldSig, String newSig) {
+            this.isCosmetic = isCosmetic;
+            this.oldLogicSignature = oldSig;
+            this.newLogicSignature = newSig;
+            return this;
+        }
     }
 
     // =========================================================================
@@ -165,5 +186,7 @@ public class FlowDiffResult {
         @AuraEnabled public Integer modified;
         @AuraEnabled public Map<String, Integer> changesByCategory;
         @AuraEnabled public Boolean hasBreakingChanges;
+        @AuraEnabled public Integer functionalChanges;
+        @AuraEnabled public Integer cosmeticChanges;
     }
 }

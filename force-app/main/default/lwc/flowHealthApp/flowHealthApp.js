@@ -157,6 +157,7 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
     @track compareLoadingVersions = false;
     @track compareDiffResult = null;
     @track compareError = null;
+    @track hideCosmeticChanges = false;
 
     // =========================================================================
     // REFRESH FROM ORG STATE
@@ -1927,6 +1928,7 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
         this.showCompareModal = false;
         this.compareDiffResult = null;
         this.compareError = null;
+        this.hideCosmeticChanges = false;
     }
 
     handleOldVersionChange(event) {
@@ -2009,8 +2011,21 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
             icon: changeTypeIcons[c.changeType] || 'utility:info',
             changeTypeBadgeClass: changeTypeBadge[c.changeType] || 'slds-badge',
             riskBadgeClass: riskBadge[c.riskLevel] || 'slds-badge',
-            hasValues: c.oldValue != null && c.newValue != null
+            hasValues: c.oldValue != null && c.newValue != null,
+            isCosmetic: c.isCosmetic === true,
+            isFunctional: c.isCosmetic !== true,
+            semanticBadgeClass: c.isCosmetic === true
+                ? 'slds-badge semantic-badge-cosmetic'
+                : 'slds-badge semantic-badge-functional',
+            semanticLabel: c.isCosmetic === true ? 'Cosmetic' : 'Functional',
+            changeRowClass: c.isCosmetic === true
+                ? 'compare-change-row cosmetic-change-row slds-p-vertical_x-small slds-border_bottom'
+                : 'compare-change-row slds-p-vertical_x-small slds-border_bottom'
         }));
+
+        // Semantic counts
+        const functionalChanges = changes.filter(c => !c.isCosmetic).length;
+        const cosmeticChanges = changes.filter(c => c.isCosmetic).length;
 
         // Group changes by category
         const grouped = {};
@@ -2027,6 +2042,9 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
             enrichedChanges: changes,
             groupedChanges: Object.values(grouped),
             totalChanges: changes.length,
+            functionalChanges: functionalChanges,
+            cosmeticChanges: cosmeticChanges,
+            hasCosmeticChanges: cosmeticChanges > 0,
             hasChanges: changes.length > 0,
             noChanges: changes.length === 0,
             scoreDeltaDisplay: raw.scoreDelta > 0
@@ -2064,6 +2082,59 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
 
     get compareHasImprovement() {
         return this.compareDiffResult && this.compareDiffResult.isImprovement;
+    }
+
+    // =========================================================================
+    // LOGIC HASHING: Semantic Meaning Layer
+    // =========================================================================
+
+    handleToggleHideCosmetic() {
+        this.hideCosmeticChanges = !this.hideCosmeticChanges;
+    }
+
+    /**
+     * Returns grouped changes filtered based on the Hide Cosmetic toggle.
+     * When toggle is active, cosmetic changes are excluded entirely.
+     */
+    get displayedGroupedChanges() {
+        if (!this.compareDiffResult || !this.compareDiffResult.groupedChanges) return [];
+        if (!this.hideCosmeticChanges) {
+            return this.compareDiffResult.groupedChanges;
+        }
+        // Filter out cosmetic changes from each group
+        return this.compareDiffResult.groupedChanges
+            .map(group => ({
+                ...group,
+                changes: group.changes.filter(c => !c.isCosmetic)
+            }))
+            .filter(group => group.changes.length > 0);
+    }
+
+    get displayedTotalChanges() {
+        if (!this.compareDiffResult) return 0;
+        if (this.hideCosmeticChanges) {
+            return this.compareDiffResult.functionalChanges || 0;
+        }
+        return this.compareDiffResult.totalChanges || 0;
+    }
+
+    get hasDisplayedChanges() {
+        return this.displayedTotalChanges > 0;
+    }
+
+    get noDisplayedChanges() {
+        return this.displayedTotalChanges === 0 && this.compareDiffResult !== null;
+    }
+
+    get semanticSummaryText() {
+        if (!this.compareDiffResult) return '';
+        const f = this.compareDiffResult.functionalChanges || 0;
+        const c = this.compareDiffResult.cosmeticChanges || 0;
+        return f + ' functional, ' + c + ' cosmetic';
+    }
+
+    get hasCosmeticChangesInResult() {
+        return this.compareDiffResult && this.compareDiffResult.cosmeticChanges > 0;
     }
 
     // =========================================================================

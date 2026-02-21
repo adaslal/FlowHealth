@@ -1543,15 +1543,20 @@
         <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_large">
             <div class="slds-modal__container">
                 <header class="slds-modal__header">
-                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={handleCloseCompare}>
-                        <lightning-icon icon-name="utility:close" size="small" variant="inverse"></lightning-icon>
-                    </button>
+                    <lightning-button-icon
+                        icon-name="utility:close"
+                        alternative-text="Close"
+                        variant="bare-inverse"
+                        size="large"
+                        class="slds-modal__close"
+                        onclick={handleCloseCompare}>
+                    </lightning-button-icon>
                     <h2 class="slds-text-heading_medium slds-hyphenate">
                         <lightning-icon icon-name="utility:change_record_type" size="small" class="slds-m-right_x-small"></lightning-icon>
                         Compare Versions — {compareFlowName}
                     </h2>
                 </header>
-                <div class="slds-modal__content slds-p-around_medium" style="min-height: 400px;">
+                <div class="slds-modal__content slds-p-around_medium">
 
                     <!-- Version Selectors -->
                     <template lwc:if={compareLoadingVersions}>
@@ -1679,6 +1684,38 @@
                                 </div>
                             </div>
 
+                            <!-- Semantic Meaning Summary -->
+                            <template lwc:if={compareDiffResult.hasChanges}>
+                                <div class="semantic-summary-bar slds-m-bottom_small">
+                                    <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                                        <div class="slds-col">
+                                            <span class="slds-badge semantic-badge-functional slds-m-right_xx-small">
+                                                <lightning-icon icon-name="utility:toggle_on" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                                {compareDiffResult.functionalChanges} Functional
+                                            </span>
+                                            <span class="slds-badge semantic-badge-cosmetic">
+                                                <lightning-icon icon-name="utility:layout" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                                {compareDiffResult.cosmeticChanges} Cosmetic
+                                            </span>
+                                        </div>
+                                        <div class="slds-col slds-no-flex">
+                                            <template lwc:if={hasCosmeticChangesInResult}>
+                                                <lightning-input
+                                                    type="toggle"
+                                                    label="Hide Cosmetic Changes"
+                                                    variant="label-hidden"
+                                                    message-toggle-active="Functional only"
+                                                    message-toggle-inactive="Showing all"
+                                                    checked={hideCosmeticChanges}
+                                                    onchange={handleToggleHideCosmetic}
+                                                    class="cosmetic-toggle">
+                                                </lightning-input>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+
                             <!-- No changes -->
                             <template lwc:if={compareDiffResult.noChanges}>
                                 <div class="slds-illustration slds-illustration_small slds-p-around_medium slds-text-align_center">
@@ -1688,17 +1725,20 @@
                                 </div>
                             </template>
 
-                            <!-- Changes grouped by category -->
-                            <template lwc:if={compareDiffResult.hasChanges}>
-                                <template for:each={compareDiffResult.groupedChanges} for:item="group">
+                            <!-- Changes grouped by category (filtered by semantic toggle) -->
+                            <template lwc:if={hasDisplayedChanges}>
+                                <template for:each={displayedGroupedChanges} for:item="group">
                                     <div key={group.key} class="slds-m-bottom_medium">
                                         <h3 class="slds-text-heading_small slds-m-bottom_x-small slds-border_bottom slds-p-bottom_x-small">
                                             {group.category}
                                         </h3>
                                         <template for:each={group.changes} for:item="change">
-                                            <div key={change.key} class="compare-change-row slds-p-vertical_x-small slds-border_bottom">
+                                            <div key={change.key} class={change.changeRowClass}>
                                                 <div class="slds-grid slds-grid_vertical-align-center">
                                                     <span class={change.changeTypeBadgeClass}>{change.changeType}</span>
+                                                    <span class={change.semanticBadgeClass} style="margin-left: 4px; font-size: 0.65rem;">
+                                                        {change.semanticLabel}
+                                                    </span>
                                                     <span class="slds-m-left_x-small slds-text-body_regular">
                                                         <strong>{change.itemLabel}</strong>
                                                         <template lwc:if={change.itemType}>
@@ -1726,6 +1766,18 @@
                                         </template>
                                     </div>
                                 </template>
+                            </template>
+
+                            <!-- All changes hidden by filter -->
+                            <template lwc:if={noDisplayedChanges}>
+                                <div class="slds-illustration slds-illustration_small slds-p-around_medium slds-text-align_center">
+                                    <lightning-icon icon-name="utility:filterList" size="large"></lightning-icon>
+                                    <p class="slds-text-heading_small slds-m-top_small">All Changes Are Cosmetic</p>
+                                    <p class="slds-text-body_small slds-text-color_weak">
+                                        No functional logic changes detected between these versions.
+                                        Toggle off "Hide Cosmetic Changes" to see layout-only differences.
+                                    </p>
+                                </div>
                             </template>
                         </template>
                     </template>

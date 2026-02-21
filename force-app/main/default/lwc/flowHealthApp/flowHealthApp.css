@@ -1022,3 +1022,52 @@
     background-color: #DD7A01;
     color: #ffffff;
 }
+
+/* =========================================================================
+   SPRINT 6C: Logic Hashing — Semantic Meaning Layer
+   ========================================================================= */
+
+/* Semantic summary bar */
+.semantic-summary-bar {
+    background: linear-gradient(135deg, #f8f9fa 0%, #f0f4f8 100%);
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+}
+
+/* Functional badge — blue accent */
+.semantic-badge-functional {
+    background-color: #0176d3 !important;
+    color: #ffffff !important;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    padding: 0.15rem 0.4rem;
+}
+
+/* Cosmetic badge — muted gray */
+.semantic-badge-cosmetic {
+    background-color: #b0adab !important;
+    color: #ffffff !important;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    padding: 0.15rem 0.4rem;
+}
+
+/* Cosmetic change row — reduced emphasis */
+.cosmetic-change-row {
+    opacity: 0.55;
+    border-left: 3px solid #d8d8d8;
+    padding-left: 0.5rem !important;
+    transition: opacity 0.2s ease;
+}
+
+.cosmetic-change-row:hover {
+    opacity: 0.85;
+}
+
+/* Toggle styling */
+.cosmetic-toggle {
+    --sds-c-input-toggle-color-background-checked: #0176d3;
+}

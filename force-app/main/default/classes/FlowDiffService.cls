@@ -123,12 +123,14 @@ public class FlowDiffService {
         String oldSafe = oldVal != null ? oldVal : '';
         String newSafe = newVal != null ? newVal : '';
         if (oldSafe != newSafe) {
+            // Configuration changes are always functional (never cosmetic)
             result.changes.add(
                 new FlowDiffResult.ChangeEntry('Modified', 'Configuration')
                     .withItem('config', fieldName, fieldLabel)
                     .withDescription(fieldLabel + ' changed from "' + oldSafe + '" to "' + newSafe + '"')
                     .withValues(oldSafe, newSafe)
                     .withRisk(riskLevel, riskReason)
+                    .withSemantics(false, oldSafe, newSafe)
             );
         }
     }
@@ -204,14 +206,33 @@ public class FlowDiffService {
         }
 
         if (!changes.isEmpty()) {
+            // Compute logic signatures to determine if change is cosmetic
+            String oldSig = computeElementSignature(typeName, oldEl);
+            String newSig = computeElementSignature(typeName, newEl);
+            Boolean isCosmetic = (oldSig == newSig);
+
             result.changes.add(
                 new FlowDiffResult.ChangeEntry('Modified', 'Elements')
                     .withItem(typeName, newEl.name, newEl.label)
                     .withDescription(typeLabel + ' "' + newEl.name + '": '
                         + String.join(changes, ', '))
-                    .withRisk('Medium', 'Element configuration changed')
+                    .withRisk(isCosmetic ? 'Info' : 'Medium',
+                        isCosmetic ? 'Cosmetic change only (layout/connector)' : 'Element configuration changed')
+                    .withSemantics(isCosmetic, oldSig, newSig)
             );
         }
+    }
+
+    /**
+     * Dispatches to the correct signature method based on element type.
+     * Used by compareBaseElement for generic elements (actionCalls, assignments, etc.)
+     * that go through the generic compareElementList pipeline.
+     */
+    private String computeElementSignature(String typeName, FlowMetadata.FlowElement el) {
+        // For generic elements routed through compareBaseElement, use the base signature.
+        // Specialized types (decisions, loops, etc.) have their own compare methods
+        // that call FlowLogicSignature directly.
+        return FlowLogicSignature.forElement(el);
     }
 
     // =========================================================================
@@ -247,12 +268,18 @@ public class FlowDiffService {
                 }
 
                 if (!changes.isEmpty()) {
+                    String oldSig = FlowLogicSignature.forDecision(oldDec);
+                    String newSig = FlowLogicSignature.forDecision(newDec);
+                    Boolean isCosmetic = (oldSig == newSig);
+
                     result.changes.add(
                         new FlowDiffResult.ChangeEntry('Modified', 'Elements')
                             .withItem('decisions', name, newDec.label)
                             .withDescription('Decision "' + name + '": '
                                 + String.join(changes, ', '))
-                            .withRisk('High', 'Decision logic changes affect branching')
+                            .withRisk(isCosmetic ? 'Info' : 'High',
+                                isCosmetic ? 'Cosmetic change only (connector routing)' : 'Decision logic changes affect branching')
+                            .withSemantics(isCosmetic, oldSig, newSig)
                     );
                 }
             }
@@ -284,12 +311,18 @@ public class FlowDiffService {
                 }
 
                 if (!changes.isEmpty()) {
+                    String oldSig = FlowLogicSignature.forLoop(oldLoop);
+                    String newSig = FlowLogicSignature.forLoop(newLoop);
+                    Boolean isCosmetic = (oldSig == newSig);
+
                     result.changes.add(
                         new FlowDiffResult.ChangeEntry('Modified', 'Elements')
                             .withItem('loops', name, newLoop.label)
                             .withDescription('Loop "' + name + '": '
                                 + String.join(changes, ', '))
-                            .withRisk('Medium', 'Loop configuration changed')
+                            .withRisk(isCosmetic ? 'Info' : 'Medium',
+                                isCosmetic ? 'Cosmetic change only' : 'Loop configuration changed')
+                            .withSemantics(isCosmetic, oldSig, newSig)
                     );
                 }
             }
@@ -326,12 +359,18 @@ public class FlowDiffService {
                 }
 
                 if (!changes.isEmpty()) {
+                    String oldSig = FlowLogicSignature.forRecordLookup(oldLookup);
+                    String newSig = FlowLogicSignature.forRecordLookup(newLookup);
+                    Boolean isCosmetic = (oldSig == newSig);
+
                     result.changes.add(
                         new FlowDiffResult.ChangeEntry('Modified', 'Elements')
                             .withItem('recordLookups', name, newLookup.label)
                             .withDescription('Record Lookup "' + name + '": '
                                 + String.join(changes, ', '))
-                            .withRisk('High', 'Query changes affect data retrieval')
+                            .withRisk(isCosmetic ? 'Info' : 'High',
+                                isCosmetic ? 'Cosmetic change only' : 'Query changes affect data retrieval')
+                            .withSemantics(isCosmetic, oldSig, newSig)
                     );
                 }
             }
@@ -364,12 +403,18 @@ public class FlowDiffService {
                 }
 
                 if (!changes.isEmpty()) {
+                    String oldSig = FlowLogicSignature.forScreen(oldScreen);
+                    String newSig = FlowLogicSignature.forScreen(newScreen);
+                    Boolean isCosmetic = (oldSig == newSig);
+
                     result.changes.add(
                         new FlowDiffResult.ChangeEntry('Modified', 'Elements')
                             .withItem('screens', name, newScreen.label)
                             .withDescription('Screen "' + name + '": '
                                 + String.join(changes, ', '))
-                            .withRisk('Medium', 'Screen UI changed')
+                            .withRisk(isCosmetic ? 'Info' : 'Medium',
+                                isCosmetic ? 'Cosmetic change only' : 'Screen UI changed')
+                            .withSemantics(isCosmetic, oldSig, newSig)
                     );
                 }
             }
@@ -398,12 +443,18 @@ public class FlowDiffService {
                 }
 
                 if (!changes.isEmpty()) {
+                    String oldSig = FlowLogicSignature.forSubflow(oldSf);
+                    String newSig = FlowLogicSignature.forSubflow(newSf);
+                    Boolean isCosmetic = (oldSig == newSig);
+
                     result.changes.add(
                         new FlowDiffResult.ChangeEntry('Modified', 'Elements')
                             .withItem('subflows', name, newSf.label)
                             .withDescription('Subflow "' + name + '": '
                                 + String.join(changes, ', '))
-                            .withRisk('High', 'Subflow reference changes affect downstream flows')
+                            .withRisk(isCosmetic ? 'Info' : 'High',
+                                isCosmetic ? 'Cosmetic change only' : 'Subflow reference changes affect downstream flows')
+                            .withSemantics(isCosmetic, oldSig, newSig)
                     );
                 }
             }
@@ -454,11 +505,17 @@ public class FlowDiffService {
         }
 
         if (!changes.isEmpty()) {
+            String oldSig = FlowLogicSignature.forStart(oldStart);
+            String newSig = FlowLogicSignature.forStart(newStart);
+            Boolean isCosmetic = (oldSig == newSig);
+
             result.changes.add(
                 new FlowDiffResult.ChangeEntry('Modified', 'Configuration')
                     .withItem('start', 'start', 'Start Element')
                     .withDescription('Start element: ' + String.join(changes, ', '))
-                    .withRisk('Critical', 'Start element changes affect when/how the flow triggers')
+                    .withRisk(isCosmetic ? 'Info' : 'Critical',
+                        isCosmetic ? 'Cosmetic change only (connector routing)' : 'Start element changes affect when/how the flow triggers')
+                    .withSemantics(isCosmetic, oldSig, newSig)
             );
         }
     }
@@ -523,12 +580,18 @@ public class FlowDiffService {
                 }
 
                 if (!changes.isEmpty()) {
+                    String oldSig = FlowLogicSignature.forVariable(oldVar);
+                    String newSig = FlowLogicSignature.forVariable(newVar);
+                    Boolean isCosmetic = (oldSig == newSig);
+
                     result.changes.add(
                         new FlowDiffResult.ChangeEntry('Modified', 'Resources')
                             .withItem('variable', name, name)
                             .withDescription('Variable "' + name + '": '
                                 + String.join(changes, ', '))
-                            .withRisk('High', 'Variable type/accessibility changes can break references')
+                            .withRisk(isCosmetic ? 'Info' : 'High',
+                                isCosmetic ? 'Cosmetic change only' : 'Variable type/accessibility changes can break references')
+                            .withSemantics(isCosmetic, oldSig, newSig)
                     );
                 }
             }
@@ -559,12 +622,18 @@ public class FlowDiffService {
                 }
 
                 if (!changes.isEmpty()) {
+                    String oldSig = FlowLogicSignature.forFormula(oldF);
+                    String newSig = FlowLogicSignature.forFormula(newF);
+                    Boolean isCosmetic = (oldSig == newSig);
+
                     result.changes.add(
                         new FlowDiffResult.ChangeEntry('Modified', 'Resources')
                             .withItem('formula', name, name)
                             .withDescription('Formula "' + name + '": '
                                 + String.join(changes, ', '))
-                            .withRisk('Medium', 'Formula logic changed')
+                            .withRisk(isCosmetic ? 'Info' : 'Medium',
+                                isCosmetic ? 'Cosmetic change only' : 'Formula logic changed')
+                            .withSemantics(isCosmetic, oldSig, newSig)
                     );
                 }
             }
@@ -586,11 +655,17 @@ public class FlowDiffService {
                 FlowMetadata.FlowConstant oldC = oldMap.get(name);
                 FlowMetadata.FlowConstant newC = newMap.get(name);
                 if (strChanged(oldC.dataType, newC.dataType)) {
+                    String oldSig = FlowLogicSignature.forConstant(oldC);
+                    String newSig = FlowLogicSignature.forConstant(newC);
+                    Boolean isCosmetic = (oldSig == newSig);
+
                     result.changes.add(
                         new FlowDiffResult.ChangeEntry('Modified', 'Resources')
                             .withItem('constant', name, name)
                             .withDescription('Constant "' + name + '": data type changed')
-                            .withRisk('Medium', 'Constant type change may affect consumers')
+                            .withRisk(isCosmetic ? 'Info' : 'Medium',
+                                isCosmetic ? 'Cosmetic change only' : 'Constant type change may affect consumers')
+                            .withSemantics(isCosmetic, oldSig, newSig)
                     );
                 }
             }
@@ -612,11 +687,15 @@ public class FlowDiffService {
                 FlowMetadata.FlowTextTemplate oldT = oldMap.get(name);
                 FlowMetadata.FlowTextTemplate newT = newMap.get(name);
                 if (strChanged(oldT.text, newT.text)) {
+                    String oldSig = FlowLogicSignature.forTextTemplate(oldT);
+                    String newSig = FlowLogicSignature.forTextTemplate(newT);
+
                     result.changes.add(
                         new FlowDiffResult.ChangeEntry('Modified', 'Resources')
                             .withItem('textTemplate', name, name)
                             .withDescription('Text Template "' + name + '": content changed')
                             .withRisk('Low', 'Template text updated')
+                            .withSemantics(false, oldSig, newSig)
                     );
                 }
             }
@@ -647,12 +726,18 @@ public class FlowDiffService {
                 }
 
                 if (!changes.isEmpty()) {
+                    String oldSig = FlowLogicSignature.forChoice(oldCh);
+                    String newSig = FlowLogicSignature.forChoice(newCh);
+                    Boolean isCosmetic = (oldSig == newSig);
+
                     result.changes.add(
                         new FlowDiffResult.ChangeEntry('Modified', 'Resources')
                             .withItem('choice', name, name)
                             .withDescription('Choice "' + name + '": '
                                 + String.join(changes, ', '))
-                            .withRisk('Low', 'Choice option changed')
+                            .withRisk(isCosmetic ? 'Info' : 'Low',
+                                isCosmetic ? 'Cosmetic change only' : 'Choice option changed')
+                            .withSemantics(isCosmetic, oldSig, newSig)
                     );
                 }
             }
