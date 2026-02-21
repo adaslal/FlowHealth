@@ -29,6 +29,11 @@ import saveCustomRule from '@salesforce/apex/FlowHealthController.saveCustomRule
 import deleteCustomRule from '@salesforce/apex/FlowHealthController.deleteCustomRule';
 import toggleCustomRule from '@salesforce/apex/FlowHealthController.toggleCustomRule';
 import testCustomRule from '@salesforce/apex/FlowHealthController.testCustomRule';
+// Sprint 6: Version Comparison
+import getFlowVersions from '@salesforce/apex/FlowHealthController.getFlowVersions';
+import compareFlowVersions from '@salesforce/apex/FlowHealthController.compareFlowVersions';
+// Sprint 7: PermSet Patchmaster
+import generatePermSetPatch from '@salesforce/apex/FlowHealthController.generatePermSetPatch';
 
 // Process type labels (shared between single + bulk views)
 const PROCESS_TYPE_LABELS = {
@@ -140,6 +145,37 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
     @track testRuleResult = null;
 
     // =========================================================================
+    // SPRINT 6: VERSION COMPARISON STATE
+    // =========================================================================
+
+    @track showCompareModal = false;
+    @track compareFlowName = '';       // DeveloperName of the flow being compared
+    @track compareVersions = [];       // List of FlowVersionInfo for the selector
+    @track compareOldVersionId = '';
+    @track compareNewVersionId = '';
+    @track compareLoading = false;
+    @track compareLoadingVersions = false;
+    @track compareDiffResult = null;
+    @track compareError = null;
+
+    // =========================================================================
+    // REFRESH FROM ORG STATE
+    // =========================================================================
+
+    @track isRefreshing = false;
+
+    // =========================================================================
+    // SPRINT 7: PERMSET PATCHMASTER STATE
+    // =========================================================================
+
+    @track patchDestXml = '';              // Destination (Prod) XML
+    @track patchSrcXml = '';               // Source (Dev) XML
+    @track patchResult = null;             // PermSetPatchService.PatchResult
+    @track patchLoading = false;
+    @track patchError = null;
+    @track patchSuccessVisible = false;    // Success toast visibility
+
+    // =========================================================================
     // VIEW TOGGLE HANDLERS
     // =========================================================================
 
@@ -207,6 +243,40 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
                 this.error = this.extractError(error);
                 this.isAnalyzing = false;
             });
+    }
+
+    /**
+     * Refresh from Org — re-analyzes the currently selected flow
+     * without clearing the previous results until the new data arrives.
+     * This is the "Developer Productivity Loop" feature.
+     */
+    handleRefreshFromOrg() {
+        if (!this.selectedFlowName || this.isRefreshing) return;
+
+        const developerName = this.selectedFlowName;
+        this.isRefreshing = true;
+        this.error = null;
+
+        getFlowDetail({ flowDeveloperName: developerName })
+            .then(result => {
+                this.flowDetail = result;
+                this.buildElementSummary(result);
+                return analyzeFlow({ flowDeveloperName: developerName });
+            })
+            .then(result => {
+                this.analysisResult = result;
+                this.buildFindingsDisplay(result);
+                this.isRefreshing = false;
+                this.loadFlowTrend(developerName);
+            })
+            .catch(error => {
+                this.error = this.extractError(error);
+                this.isRefreshing = false;
+            });
+    }
+
+    get refreshButtonLabel() {
+        return this.isRefreshing ? 'Refreshing...' : 'Refresh from Org';
     }
 
     buildElementSummary(detail) {
@@ -659,13 +729,17 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
             }
         });
 
-        const rows = [
-            ['Flow Name', 'Developer Name', 'Type', 'Score', 'Grade', 'Total Findings', 'Critical', 'High', 'Medium', 'Low', 'Most Common Failure']
+        // =====================================================================
+        // TABLE 1: FLOW HEALTH SCORES
+        // =====================================================================
+        const table1 = [
+            ['FLOW HEALTH SCORES'],
+            ['Flow Name', 'Developer Name', 'Type', 'Score', 'Grade', 'Findings', 'Critical', 'High', 'Medium', 'Low', 'Top Failure']
         ];
 
         this.bulkResults.forEach(item => {
             if (item.failed) {
-                rows.push([
+                table1.push([
                     this.csvEscape(item.flow.masterLabel || item.flow.developerName),
                     this.csvEscape(item.flow.developerName),
                     this.csvEscape(PROCESS_TYPE_LABELS[item.flow.processType] || item.flow.processType || ''),
@@ -692,7 +766,7 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
                     }
                 });
 
-                rows.push([
+                table1.push([
                     this.csvEscape(item.flow.masterLabel || item.flow.developerName),
                     this.csvEscape(item.flow.developerName),
                     this.csvEscape(PROCESS_TYPE_LABELS[item.flow.processType] || item.flow.processType || ''),
@@ -708,26 +782,27 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
             }
         });
 
-        // Add org-wide summary row
-        rows.push([]);
-        rows.push(['ORG SUMMARY', '', '', this.avgScore, this.avgGrade, this.bulkTotalFindings, this.bulkTotalCritical, '', '', '', this.csvEscape(orgMostCommon)]);
+        // Org summary row
+        table1.push([]);
+        table1.push(['ORG SUMMARY', '', '', this.avgScore, this.avgGrade, this.bulkTotalFindings, this.bulkTotalCritical, '', '', '', this.csvEscape(orgMostCommon)]);
 
-        // ORG-WIDE STRATEGIC ACTION PLAN — Weighted priority: (SeverityWeight × 1000) + Occurrences
+        // =====================================================================
+        // TABLE 2: ORG-WIDE STRATEGIC ACTION PLAN (separate table)
+        // =====================================================================
+        const table2 = [];
         const insights = this.strategicInsights;
-        if (insights.length > 0) {
-            rows.push([]);
-            rows.push([]);
-            rows.push(['ORG-WIDE STRATEGIC ACTION PLAN']);
-            rows.push(['Rank', 'Rule ID', 'Rule Name', 'Severity', 'Total Occurrences', 'Affected Flows', 'Affected %', 'Strategic Priority', 'Description', 'Remediation']);
 
-            // Critical/High tier first
+        if (insights.length > 0) {
+            table2.push(['ORG-WIDE STRATEGIC ACTION PLAN']);
+            table2.push(['Rank', 'Rule ID', 'Rule Name', 'Severity', 'Occurrences', 'Affected Flows', 'Affected %', 'Priority', 'Description', 'Remediation']);
+
             const criticalItems = insights.filter(i => i.isCriticalTier);
             const otherItems = insights.filter(i => !i.isCriticalTier);
 
             if (criticalItems.length > 0) {
-                rows.push(['--- NEEDS IMMEDIATE ATTENTION ---']);
+                table2.push(['--- NEEDS IMMEDIATE ATTENTION ---']);
                 criticalItems.forEach(insight => {
-                    rows.push([
+                    table2.push([
                         insight.rank,
                         this.csvEscape(insight.ruleId),
                         this.csvEscape(insight.ruleName),
@@ -736,16 +811,16 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
                         insight.affectedFlowCount,
                         insight.affectedPercent + '%',
                         insight.strategicPriority,
-                        this.csvEscape(insight.description),
-                        this.csvEscape(insight.remediation)
+                        this.csvEscape(this.wrapText(insight.description, 60)),
+                        this.csvEscape(this.wrapText(insight.remediation, 60))
                     ]);
                 });
             }
 
             if (otherItems.length > 0) {
-                rows.push(['--- IMPROVEMENT OPPORTUNITIES ---']);
+                table2.push(['--- IMPROVEMENT OPPORTUNITIES ---']);
                 otherItems.forEach(insight => {
-                    rows.push([
+                    table2.push([
                         insight.rank,
                         this.csvEscape(insight.ruleId),
                         this.csvEscape(insight.ruleName),
@@ -754,17 +829,49 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
                         insight.affectedFlowCount,
                         insight.affectedPercent + '%',
                         insight.strategicPriority,
-                        this.csvEscape(insight.description),
-                        this.csvEscape(insight.remediation)
+                        this.csvEscape(this.wrapText(insight.description, 60)),
+                        this.csvEscape(this.wrapText(insight.remediation, 60))
                     ]);
                 });
             }
         }
 
-        const csvContent = rows.map(r => r.join(',')).join('\n');
-        const filename = 'FlowHealth_BulkReport_' + new Date().toISOString().slice(0, 10) + '.csv';
+        // Export as TWO separate CSV files so tables are truly independent
+        // File 1: Flow Health Scores
+        const csv1Content = table1.map(r => r.join(',')).join('\n');
+        const date = new Date().toISOString().slice(0, 10);
+        this.downloadFile(csv1Content, 'FlowHealth_Scores_' + date + '.csv', 'text/csv');
 
-        this.downloadFile(csvContent, filename, 'text/csv');
+        // File 2: Strategic Action Plan (with slight delay so browser handles both downloads)
+        if (table2.length > 0) {
+            const csv2Content = table2.map(r => r.join(',')).join('\n');
+            // eslint-disable-next-line @lwc/lwc/no-async-operation
+            setTimeout(() => {
+                this.downloadFile(csv2Content, 'FlowHealth_ActionPlan_' + date + '.csv', 'text/csv');
+            }, 500);
+        }
+
+    }
+
+    /**
+     * Wraps text at a given character width using newlines within the cell.
+     * This prevents CSV columns from being excessively wide.
+     */
+    wrapText(text, maxWidth) {
+        if (!text || text.length <= maxWidth) return text || '';
+        const words = text.split(' ');
+        const lines = [];
+        let currentLine = '';
+        words.forEach(word => {
+            if (currentLine.length + word.length + 1 > maxWidth && currentLine.length > 0) {
+                lines.push(currentLine);
+                currentLine = word;
+            } else {
+                currentLine = currentLine ? currentLine + ' ' + word : word;
+            }
+        });
+        if (currentLine) lines.push(currentLine);
+        return lines.join('\n');
     }
 
     csvEscape(val) {
@@ -993,6 +1100,7 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
     get isSingleView() { return this.viewMode === 'single'; }
     get isBulkView() { return this.viewMode === 'bulk'; }
     get isSettingsView() { return this.viewMode === 'settings'; }
+    get isPermsetView() { return this.viewMode === 'permset'; }
 
     get singleToggleClass() {
         return this.viewMode === 'single'
@@ -1008,6 +1116,12 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
 
     get settingsToggleClass() {
         return this.viewMode === 'settings'
+            ? 'slds-button view-toggle-btn view-toggle-btn-active'
+            : 'slds-button view-toggle-btn';
+    }
+
+    get permsetToggleClass() {
+        return this.viewMode === 'permset'
             ? 'slds-button view-toggle-btn view-toggle-btn-active'
             : 'slds-button view-toggle-btn';
     }
@@ -1766,6 +1880,340 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
     get hasTestFindings() {
         return this.testRuleResult && this.testRuleResult.findings && this.testRuleResult.findings.length > 0;
     }
+
+    // =========================================================================
+    // SPRINT 6: VERSION COMPARISON HANDLERS
+    // =========================================================================
+
+    /**
+     * Opens the Compare Versions modal.
+     * Can be triggered from single-flow view (uses selectedFlowName)
+     * or from bulk drill-down.
+     */
+    handleOpenCompare() {
+        const flowName = this.selectedFlowName;
+        if (!flowName) return;
+
+        this.compareFlowName = flowName;
+        this.compareVersions = [];
+        this.compareOldVersionId = '';
+        this.compareNewVersionId = '';
+        this.compareDiffResult = null;
+        this.compareError = null;
+        this.showCompareModal = true;
+        this.compareLoadingVersions = true;
+
+        getFlowVersions({ flowDeveloperName: flowName })
+            .then(result => {
+                this.compareVersions = (result || []).map(v => ({
+                    ...v,
+                    optionLabel: v.displayLabel
+                }));
+                this.compareLoadingVersions = false;
+
+                // Auto-select: newest as "new", second-newest as "old"
+                if (this.compareVersions.length >= 2) {
+                    this.compareNewVersionId = this.compareVersions[0].id;
+                    this.compareOldVersionId = this.compareVersions[1].id;
+                }
+            })
+            .catch(error => {
+                this.compareError = this.extractError(error);
+                this.compareLoadingVersions = false;
+            });
+    }
+
+    handleCloseCompare() {
+        this.showCompareModal = false;
+        this.compareDiffResult = null;
+        this.compareError = null;
+    }
+
+    handleOldVersionChange(event) {
+        this.compareOldVersionId = event.detail.value;
+        this.compareDiffResult = null;
+    }
+
+    handleNewVersionChange(event) {
+        this.compareNewVersionId = event.detail.value;
+        this.compareDiffResult = null;
+    }
+
+    get compareVersionOptions() {
+        return this.compareVersions.map(v => ({
+            label: v.optionLabel,
+            value: v.id
+        }));
+    }
+
+    get canCompare() {
+        return this.compareOldVersionId && this.compareNewVersionId
+            && this.compareOldVersionId !== this.compareNewVersionId
+            && !this.compareLoading;
+    }
+
+    get compareButtonDisabled() {
+        return !this.canCompare;
+    }
+
+    handleRunCompare() {
+        if (!this.canCompare) return;
+
+        this.compareLoading = true;
+        this.compareDiffResult = null;
+        this.compareError = null;
+
+        compareFlowVersions({
+            oldVersionId: this.compareOldVersionId,
+            newVersionId: this.compareNewVersionId
+        })
+            .then(result => {
+                this.compareDiffResult = this.enrichDiffResult(result);
+                this.compareLoading = false;
+            })
+            .catch(error => {
+                this.compareError = this.extractError(error);
+                this.compareLoading = false;
+            });
+    }
+
+    /**
+     * Enriches the raw diff result with display properties for the LWC template.
+     */
+    enrichDiffResult(raw) {
+        if (!raw) return null;
+
+        const changeTypeIcons = {
+            'Added': 'utility:add',
+            'Removed': 'utility:delete',
+            'Modified': 'utility:edit'
+        };
+
+        const changeTypeBadge = {
+            'Added': 'slds-badge slds-badge_success',
+            'Removed': 'slds-badge slds-badge_error',
+            'Modified': 'slds-badge slds-badge_warning'
+        };
+
+        const riskBadge = {
+            'Critical': 'slds-badge severity-badge-critical',
+            'High': 'slds-badge severity-badge-high',
+            'Medium': 'slds-badge severity-badge-medium',
+            'Low': 'slds-badge severity-badge-low',
+            'Info': 'slds-badge'
+        };
+
+        const changes = (raw.changes || []).map((c, idx) => ({
+            ...c,
+            key: 'change_' + idx,
+            icon: changeTypeIcons[c.changeType] || 'utility:info',
+            changeTypeBadgeClass: changeTypeBadge[c.changeType] || 'slds-badge',
+            riskBadgeClass: riskBadge[c.riskLevel] || 'slds-badge',
+            hasValues: c.oldValue != null && c.newValue != null
+        }));
+
+        // Group changes by category
+        const grouped = {};
+        changes.forEach(c => {
+            const cat = c.category || 'Other';
+            if (!grouped[cat]) {
+                grouped[cat] = { category: cat, changes: [], key: 'cat_' + cat };
+            }
+            grouped[cat].changes.push(c);
+        });
+
+        return {
+            ...raw,
+            enrichedChanges: changes,
+            groupedChanges: Object.values(grouped),
+            totalChanges: changes.length,
+            hasChanges: changes.length > 0,
+            noChanges: changes.length === 0,
+            scoreDeltaDisplay: raw.scoreDelta > 0
+                ? '+' + raw.scoreDelta
+                : String(raw.scoreDelta),
+            scoreDeltaClass: raw.scoreDelta > 0
+                ? 'slds-text-color_success'
+                : (raw.scoreDelta < 0 ? 'slds-text-color_error' : ''),
+            oldScoreColor: GRADE_COLORS[raw.oldGrade] || '#706e6b',
+            newScoreColor: GRADE_COLORS[raw.newGrade] || '#706e6b',
+            regressionWarning: raw.isRegression
+                ? 'Health score dropped by ' + Math.abs(raw.scoreDelta) + ' points — this version introduces regressions.'
+                : null,
+            improvementNote: raw.isImprovement
+                ? 'Health score improved by ' + raw.scoreDelta + ' points!'
+                : null
+        };
+    }
+
+    get hasCompareDiffResult() {
+        return this.compareDiffResult !== null;
+    }
+
+    get hasCompareError() {
+        return this.compareError !== null;
+    }
+
+    get compareVersionsLoaded() {
+        return !this.compareLoadingVersions;
+    }
+
+    get compareHasRegression() {
+        return this.compareDiffResult && this.compareDiffResult.isRegression;
+    }
+
+    get compareHasImprovement() {
+        return this.compareDiffResult && this.compareDiffResult.isImprovement;
+    }
+
+    // =========================================================================
+    // SPRINT 7: PERMSET PATCHMASTER HANDLERS
+    // =========================================================================
+
+    handlePatchDestChange(event) {
+        this.patchDestXml = event.target.value;
+        this.patchResult = null;
+        this.patchError = null;
+    }
+
+    handlePatchSrcChange(event) {
+        this.patchSrcXml = event.target.value;
+        this.patchResult = null;
+        this.patchError = null;
+    }
+
+    handlePatchFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const inputType = event.target.dataset.input; // 'dest' or 'src'
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            if (inputType === 'dest') {
+                this.patchDestXml = e.target.result;
+            } else {
+                this.patchSrcXml = e.target.result;
+            }
+            this.patchResult = null;
+            this.patchError = null;
+        };
+        reader.readAsText(file);
+    }
+
+    handleGeneratePatch() {
+        if (!this.patchDestXml || !this.patchSrcXml) return;
+
+        this.patchLoading = true;
+        this.patchError = null;
+        this.patchResult = null;
+        this.patchSuccessVisible = false;
+
+        generatePermSetPatch({
+            destinationXml: this.patchDestXml,
+            sourceXml: this.patchSrcXml
+        })
+            .then(result => {
+                this.patchResult = this.enrichPatchResult(result);
+                this.patchLoading = false;
+                // Show success toast, auto-dismiss after 4s
+                this.patchSuccessVisible = true;
+                // eslint-disable-next-line @lwc/lwc/no-async-operation
+                setTimeout(() => { this.patchSuccessVisible = false; }, 4000);
+            })
+            .catch(error => {
+                this.patchError = this.extractError(error);
+                this.patchLoading = false;
+            });
+    }
+
+    /**
+     * Reset & New Scan — clears ALL Patchmaster state for a clean slate.
+     * No page refresh required.
+     */
+    handlePatchReset() {
+        this.patchDestXml = '';
+        this.patchSrcXml = '';
+        this.patchResult = null;
+        this.patchError = null;
+        this.patchLoading = false;
+        this.patchSuccessVisible = false;
+    }
+
+    handleDownloadPatchedXml() {
+        if (!this.patchResult || !this.patchResult.patchedXml) return;
+
+        const filename = 'PermissionSet_Patched_' + new Date().toISOString().slice(0, 10) + '.permissionset-meta.xml';
+        this.downloadFile(this.patchResult.patchedXml, filename, 'application/xml');
+    }
+
+    handleCopyPatchedXml() {
+        if (!this.patchResult || !this.patchResult.patchedXml) return;
+
+        const textarea = document.createElement('textarea');
+        textarea.value = this.patchResult.patchedXml;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+
+        this._copyConfirmed = true;
+        // eslint-disable-next-line @lwc/lwc/no-async-operation
+        setTimeout(() => { this._copyConfirmed = false; }, 2000);
+    }
+
+    /**
+     * Enriches the PatchResult with display properties.
+     */
+    enrichPatchResult(result) {
+        if (!result) return null;
+
+        const actions = (result.actionsApplied || []).map((a, idx) => ({
+            ...a,
+            key: 'patch_' + idx,
+            actionBadgeClass: this.getPatchActionBadgeClass(a.actionType),
+            actionIcon: this.getPatchActionIcon(a.actionType)
+        }));
+
+        const parts = [];
+        if (result.addedCount > 0) parts.push(result.addedCount + ' added');
+        if (result.modifiedCount > 0) parts.push(result.modifiedCount + ' modified');
+        if (result.preservedCount > 0) parts.push(result.preservedCount + ' preserved');
+
+        return {
+            ...result,
+            enrichedActions: actions,
+            hasActions: actions.length > 0,
+            noActions: actions.length === 0,
+            summaryLabel: parts.join(' · ') || 'No changes needed'
+        };
+    }
+
+    getPatchActionBadgeClass(actionType) {
+        const map = {
+            'ADDED': 'slds-badge slds-badge_success',
+            'MODIFIED': 'slds-badge slds-badge_warning',
+            'PRESERVED': 'slds-badge slds-badge_inverse'
+        };
+        return map[actionType] || 'slds-badge';
+    }
+
+    getPatchActionIcon(actionType) {
+        const map = {
+            'ADDED': 'utility:add',
+            'MODIFIED': 'utility:edit',
+            'PRESERVED': 'utility:lock'
+        };
+        return map[actionType] || 'utility:info';
+    }
+
+    // Computed: Patchmaster view properties
+    get hasPatchDestXml() { return this.patchDestXml && this.patchDestXml.trim().length > 0; }
+    get hasPatchSrcXml() { return this.patchSrcXml && this.patchSrcXml.trim().length > 0; }
+    get patchGenerateDisabled() { return !this.hasPatchDestXml || !this.hasPatchSrcXml || this.patchLoading; }
+    get hasPatchError() { return this.patchError !== null; }
+    get hasPatchResult() { return this.patchResult !== null; }
 
     // =========================================================================
     // SHARED HELPERS

@@ -53,6 +53,10 @@
             <lightning-icon icon-name="utility:settings" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
             Settings
         </button>
+        <button class={permsetToggleClass} data-view="permset" onclick={handleViewToggle}>
+            <lightning-icon icon-name="utility:merge" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+            PermSet Patchmaster
+        </button>
     </div>
 
     <!-- ================================================================ -->
@@ -116,22 +120,37 @@
                                     <span class="score-label">/ 100</span>
                                 </div>
                             </div>
-                            <div class="slds-m-top_x-small">
+                            <div class="slds-m-top_x-small slds-p-around_small">
                                 <span class="grade-badge" style={gradeStyle}>
                                     Grade: {healthGrade} &mdash; {healthGradeLabel}
                                 </span>
                             </div>
 
-                            <!-- Export Buttons (Sprint 4) -->
+                            <!-- Action Buttons (Refresh + Export) -->
                             <template lwc:if={canExportSingle}>
-                                <div class="export-buttons slds-m-top_small">
-                                    <button class="slds-button slds-button_neutral slds-m-right_x-small" onclick={handleExportCsv}>
-                                        <lightning-icon icon-name="utility:download" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
-                                        Export CSV
-                                    </button>
-                                    <button class="slds-button slds-button_neutral" onclick={handleExportPdf}>
-                                        <lightning-icon icon-name="utility:pdf_ext" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
-                                        Export PDF
+                                <div class="action-buttons-container slds-m-top_medium">
+                                    <div class="action-buttons-row">
+                                        <button class="slds-button slds-button_neutral action-btn-compact" onclick={handleRefreshFromOrg} disabled={isRefreshing}>
+                                            <template lwc:if={isRefreshing}>
+                                                <lightning-spinner alternative-text="Refreshing..." size="xx-small" class="slds-m-right_xx-small"></lightning-spinner>
+                                            </template>
+                                            <template lwc:else>
+                                                <lightning-icon icon-name="utility:refresh" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                            </template>
+                                            {refreshButtonLabel}
+                                        </button>
+                                        <button class="slds-button slds-button_neutral action-btn-compact" onclick={handleExportCsv}>
+                                            <lightning-icon icon-name="utility:download" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                            Export CSV
+                                        </button>
+                                        <button class="slds-button slds-button_neutral action-btn-compact" onclick={handleExportPdf}>
+                                            <lightning-icon icon-name="utility:pdf_ext" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                            Export PDF
+                                        </button>
+                                    </div>
+                                    <button class="slds-button slds-button_brand action-btn-compare" onclick={handleOpenCompare}>
+                                        <lightning-icon icon-name="utility:change_record_type" size="xx-small" class="slds-m-right_xx-small" variant="inverse"></lightning-icon>
+                                        Compare Versions
                                     </button>
                                 </div>
                             </template>
@@ -1294,5 +1313,428 @@
             </section>
             <div class="slds-backdrop slds-backdrop_open"></div>
         </template>
+    </template>
+
+    <!-- ================================================================ -->
+    <!-- PERMSET PATCHMASTER VIEW (Sprint 7)                              -->
+    <!-- ================================================================ -->
+    <template lwc:if={isPermsetView}>
+        <div class="bulk-card-container slds-m-bottom_medium">
+            <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_medium">
+                <div class="slds-col">
+                    <h2 class="slds-text-heading_medium">
+                        <lightning-icon icon-name="utility:merge" size="small" class="slds-m-right_x-small"></lightning-icon>
+                        PermSet Patchmaster
+                    </h2>
+                    <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                        Surgical merge for Permission Sets. Paste your Destination (Prod) and Source (Dev) XML — we'll generate a safe patch that adds new permissions without destroying existing ones.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Dual XML Input Area -->
+            <div class="patchmaster-dual-input slds-grid slds-gutters_medium slds-m-bottom_medium slds-wrap">
+                <!-- Input A: Destination / Base -->
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <div class="patchmaster-input-panel patchmaster-dest-panel">
+                        <div class="slds-form-element">
+                            <label class="slds-form-element__label">
+                                <span class="patchmaster-label-badge patchmaster-label-dest">A</span>
+                                <strong>Destination / Base</strong>
+                                <span class="slds-text-body_small slds-text-color_weak slds-m-left_xx-small">— The "truth" from Production</span>
+                            </label>
+                            <div class="slds-form-element__control">
+                                <textarea
+                                    class="slds-textarea permset-xml-textarea"
+                                    placeholder="Paste the Production / Target Org&#10;.permissionset-meta.xml here..."
+                                    value={patchDestXml}
+                                    onchange={handlePatchDestChange}
+                                    rows="14"
+                                ></textarea>
+                            </div>
+                        </div>
+                        <div class="slds-m-top_x-small">
+                            <label class="slds-button slds-button_neutral slds-button_small">
+                                <lightning-icon icon-name="utility:upload" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                Upload Destination XML
+                                <input type="file" accept=".xml,.permissionset-meta.xml" data-input="dest" onchange={handlePatchFileUpload} class="slds-hide" />
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input B: Source / Delta -->
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <div class="patchmaster-input-panel patchmaster-src-panel">
+                        <div class="slds-form-element">
+                            <label class="slds-form-element__label">
+                                <span class="patchmaster-label-badge patchmaster-label-src">B</span>
+                                <strong>Source / Delta</strong>
+                                <span class="slds-text-body_small slds-text-color_weak slds-m-left_xx-small">— New changes from Dev Org</span>
+                            </label>
+                            <div class="slds-form-element__control">
+                                <textarea
+                                    class="slds-textarea permset-xml-textarea"
+                                    placeholder="Paste the Dev / Source Org&#10;.permissionset-meta.xml here..."
+                                    value={patchSrcXml}
+                                    onchange={handlePatchSrcChange}
+                                    rows="14"
+                                ></textarea>
+                            </div>
+                        </div>
+                        <div class="slds-m-top_x-small">
+                            <label class="slds-button slds-button_neutral slds-button_small">
+                                <lightning-icon icon-name="utility:upload" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                Upload Source XML
+                                <input type="file" accept=".xml,.permissionset-meta.xml" data-input="src" onchange={handlePatchFileUpload} class="slds-hide" />
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="slds-grid slds-grid_align-center slds-m-bottom_medium" style="gap: 0.75rem;">
+                <button class="slds-button slds-button_brand action-btn-industrial" onclick={handleGeneratePatch} disabled={patchGenerateDisabled}>
+                    <lightning-icon icon-name="utility:merge" size="xx-small" class="slds-m-right_x-small" variant="inverse"></lightning-icon>
+                    Generate Patch
+                </button>
+                <button class="slds-button slds-button_neutral action-btn-industrial" onclick={handlePatchReset}>
+                    <lightning-icon icon-name="utility:refresh" size="xx-small" class="slds-m-right_x-small"></lightning-icon>
+                    Reset &amp; New Scan
+                </button>
+            </div>
+
+            <!-- Success Toast -->
+            <template lwc:if={patchSuccessVisible}>
+                <div class="patch-success-toast slds-m-bottom_medium">
+                    <lightning-icon icon-name="utility:success" size="x-small" variant="inverse"></lightning-icon>
+                    Patch generated successfully — {patchResult.summaryLabel}
+                </div>
+            </template>
+
+            <!-- Loading Spinner -->
+            <template lwc:if={patchLoading}>
+                <div class="slds-align_absolute-center slds-p-around_large">
+                    <lightning-spinner alternative-text="Generating patch..." size="medium"></lightning-spinner>
+                    <span class="slds-m-left_medium slds-text-color_weak">Reconciling permission sets...</span>
+                </div>
+            </template>
+
+            <!-- Error -->
+            <template lwc:if={hasPatchError}>
+                <div class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_medium" role="alert">
+                    <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" class="slds-m-right_x-small"></lightning-icon>
+                    <h2>{patchError}</h2>
+                </div>
+            </template>
+
+            <!-- Patch Results -->
+            <template lwc:if={hasPatchResult}>
+                <div class="slds-m-bottom_medium">
+                    <!-- Merge Summary Hero -->
+                    <div class="patchmaster-hero slds-m-bottom_medium">
+                        <div class="slds-grid slds-grid_align-center slds-grid_vertical-align-center slds-wrap" style="gap: 2rem;">
+                            <div class="slds-text-align_center">
+                                <p class="slds-text-title_caps slds-m-bottom_xx-small">Destination</p>
+                                <p style="font-size: 2rem; font-weight: 700; color: #0176d3;">
+                                    {patchResult.destinationPermCount}
+                                </p>
+                                <p class="slds-text-body_small slds-text-color_weak">permissions</p>
+                            </div>
+                            <div class="slds-text-align_center">
+                                <lightning-icon icon-name="utility:add" size="small" style="color: #04844B;"></lightning-icon>
+                            </div>
+                            <div class="slds-text-align_center">
+                                <p class="slds-text-title_caps slds-m-bottom_xx-small">Source</p>
+                                <p style="font-size: 2rem; font-weight: 700; color: #e87400;">
+                                    {patchResult.sourcePermCount}
+                                </p>
+                                <p class="slds-text-body_small slds-text-color_weak">permissions</p>
+                            </div>
+                            <div class="slds-text-align_center">
+                                <lightning-icon icon-name="utility:forward" size="large"></lightning-icon>
+                            </div>
+                            <div class="slds-text-align_center">
+                                <p class="slds-text-title_caps slds-m-bottom_xx-small">Patched</p>
+                                <p style="font-size: 2rem; font-weight: 700; color: #04844B;">
+                                    {patchResult.patchedPermCount}
+                                </p>
+                                <p class="slds-text-body_small slds-text-color_weak">permissions</p>
+                            </div>
+                        </div>
+                        <div class="slds-text-align_center slds-m-top_small">
+                            <span class="slds-badge slds-badge_success" style="font-size: 0.85rem; padding: 0.3rem 1rem;">
+                                {patchResult.summaryLabel}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Actions Applied -->
+                    <template lwc:if={patchResult.hasActions}>
+                        <h3 class="slds-text-heading_small slds-m-bottom_x-small">
+                            <lightning-icon icon-name="utility:checkin" size="x-small" class="slds-m-right_xx-small"></lightning-icon>
+                            Patch Actions ({patchResult.enrichedActions.length})
+                        </h3>
+
+                        <div class="slds-m-bottom_medium">
+                            <template for:each={patchResult.enrichedActions} for:item="action">
+                                <div key={action.key} class="permset-action-row slds-p-vertical_x-small slds-border_bottom">
+                                    <div class="slds-grid slds-grid_vertical-align-center">
+                                        <lightning-icon icon-name={action.actionIcon} size="xx-small" class="slds-m-right_x-small"></lightning-icon>
+                                        <span class={action.actionBadgeClass}>{action.actionType}</span>
+                                        <span class="slds-m-left_x-small"><strong>{action.itemName}</strong></span>
+                                        <span class="slds-text-body_small slds-text-color_weak slds-m-left_xx-small">({action.itemType})</span>
+                                    </div>
+                                    <p class="slds-text-body_small slds-m-left_large slds-m-top_xx-small slds-text-color_weak">{action.detail}</p>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <!-- No changes needed -->
+                    <template lwc:if={patchResult.noActions}>
+                        <div class="slds-illustration slds-illustration_small slds-p-around_large slds-text-align_center">
+                            <lightning-icon icon-name="utility:check" size="large" variant="success"></lightning-icon>
+                            <p class="slds-text-heading_small slds-m-top_small">Already in Sync!</p>
+                            <p class="slds-text-body_small slds-text-color_weak">Source permissions are already present in the Destination. No patch needed.</p>
+                        </div>
+                    </template>
+
+                    <!-- Download / Copy Patched XML -->
+                    <div class="slds-box slds-theme_shade slds-m-bottom_medium">
+                        <h3 class="slds-text-heading_small slds-m-bottom_small">
+                            <lightning-icon icon-name="utility:download" size="x-small" class="slds-m-right_xx-small"></lightning-icon>
+                            Patched XML Output
+                        </h3>
+                        <div class="slds-grid slds-grid_align-center" style="gap: 0.75rem;">
+                            <button class="slds-button slds-button_brand action-btn-industrial" onclick={handleDownloadPatchedXml}>
+                                <lightning-icon icon-name="utility:download" size="xx-small" class="slds-m-right_x-small" variant="inverse"></lightning-icon>
+                                Download Patched XML
+                            </button>
+                            <button class="slds-button slds-button_neutral action-btn-industrial" onclick={handleCopyPatchedXml}>
+                                <lightning-icon icon-name="utility:copy" size="xx-small" class="slds-m-right_x-small"></lightning-icon>
+                                Copy to Clipboard
+                            </button>
+                        </div>
+
+                        <!-- Preview -->
+                        <div class="slds-m-top_small">
+                            <details>
+                                <summary class="slds-text-body_small" style="cursor: pointer; color: #0176d3;">Preview patched XML</summary>
+                                <textarea
+                                    class="slds-textarea permset-xml-preview"
+                                    readonly=""
+                                    rows="15"
+                                    value={patchResult.patchedXml}
+                                ></textarea>
+                            </details>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </template>
+
+    <!-- ================================================================ -->
+    <!-- COMPARE VERSIONS MODAL (Sprint 6)                                -->
+    <!-- ================================================================ -->
+    <template lwc:if={showCompareModal}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_large">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={handleCloseCompare}>
+                        <lightning-icon icon-name="utility:close" size="small" variant="inverse"></lightning-icon>
+                    </button>
+                    <h2 class="slds-text-heading_medium slds-hyphenate">
+                        <lightning-icon icon-name="utility:change_record_type" size="small" class="slds-m-right_x-small"></lightning-icon>
+                        Compare Versions — {compareFlowName}
+                    </h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium" style="min-height: 400px;">
+
+                    <!-- Version Selectors -->
+                    <template lwc:if={compareLoadingVersions}>
+                        <div class="slds-align_absolute-center slds-p-around_large">
+                            <lightning-spinner alternative-text="Loading versions..." size="medium"></lightning-spinner>
+                            <span class="slds-m-left_medium slds-text-color_weak">Loading flow versions...</span>
+                        </div>
+                    </template>
+
+                    <template lwc:if={compareError}>
+                        <div class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_medium" role="alert">
+                            <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" class="slds-m-right_x-small"></lightning-icon>
+                            <h2>{compareError}</h2>
+                        </div>
+                    </template>
+
+                    <template lwc:elseif={compareVersionsLoaded}>
+                        <div class="slds-grid slds-gutters_small slds-m-bottom_medium">
+                            <div class="slds-col slds-size_5-of-12">
+                                <lightning-combobox
+                                    label="Old Version (Baseline)"
+                                    placeholder="Select version..."
+                                    options={compareVersionOptions}
+                                    value={compareOldVersionId}
+                                    onchange={handleOldVersionChange}
+                                ></lightning-combobox>
+                            </div>
+                            <div class="slds-col slds-size_2-of-12 slds-text-align_center slds-p-top_large">
+                                <lightning-icon icon-name="utility:forward" size="small"></lightning-icon>
+                            </div>
+                            <div class="slds-col slds-size_5-of-12">
+                                <lightning-combobox
+                                    label="New Version (Current)"
+                                    placeholder="Select version..."
+                                    options={compareVersionOptions}
+                                    value={compareNewVersionId}
+                                    onchange={handleNewVersionChange}
+                                ></lightning-combobox>
+                            </div>
+                        </div>
+
+                        <div class="slds-text-align_center slds-m-bottom_medium">
+                            <button class="slds-button slds-button_brand action-btn-compare" onclick={handleRunCompare} disabled={compareButtonDisabled}>
+                                <lightning-icon icon-name="utility:diff" size="xx-small" class="slds-m-right_xx-small" variant="inverse"></lightning-icon>
+                                Compare Versions
+                            </button>
+                        </div>
+
+                        <!-- Loading compare spinner -->
+                        <template lwc:if={compareLoading}>
+                            <div class="slds-align_absolute-center slds-p-around_large">
+                                <lightning-spinner alternative-text="Comparing versions..." size="medium"></lightning-spinner>
+                                <span class="slds-m-left_medium slds-text-color_weak">Analyzing both versions and computing diff...</span>
+                            </div>
+                        </template>
+
+                        <!-- Diff Results -->
+                        <template lwc:if={hasCompareDiffResult}>
+
+                            <!-- Score Delta Hero -->
+                            <div class="compare-score-hero slds-m-bottom_medium">
+                                <div class="slds-grid slds-grid_align-center slds-grid_vertical-align-center slds-wrap">
+                                    <div class="slds-col slds-size_1-of-3 slds-text-align_center">
+                                        <p class="slds-text-title_caps slds-m-bottom_xx-small">Old Version</p>
+                                        <p class="compare-score" style={compareDiffResult.oldScoreStyleAttr}>
+                                            {compareDiffResult.oldScore}
+                                        </p>
+                                        <span class="slds-badge">{compareDiffResult.oldGrade}</span>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-3 slds-text-align_center">
+                                        <p class="slds-text-title_caps slds-m-bottom_xx-small">Score Change</p>
+                                        <p class={compareDiffResult.scoreDeltaClass} style="font-size: 2rem; font-weight: 700;">
+                                            {compareDiffResult.scoreDeltaDisplay}
+                                        </p>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-3 slds-text-align_center">
+                                        <p class="slds-text-title_caps slds-m-bottom_xx-small">New Version</p>
+                                        <p class="compare-score" style={compareDiffResult.newScoreStyleAttr}>
+                                            {compareDiffResult.newScore}
+                                        </p>
+                                        <span class="slds-badge">{compareDiffResult.newGrade}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Regression / Improvement banners -->
+                                <template lwc:if={compareHasRegression}>
+                                    <div class="slds-notify slds-notify_alert slds-alert_warning slds-m-top_small" role="alert">
+                                        <lightning-icon icon-name="utility:warning" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                                        <span>{compareDiffResult.regressionWarning}</span>
+                                    </div>
+                                </template>
+                                <template lwc:if={compareHasImprovement}>
+                                    <div class="slds-box slds-theme_success slds-m-top_small">
+                                        <lightning-icon icon-name="utility:check" size="x-small" variant="success" class="slds-m-right_x-small"></lightning-icon>
+                                        <span>{compareDiffResult.improvementNote}</span>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- Change Summary -->
+                            <div class="slds-grid slds-gutters_small slds-m-bottom_medium">
+                                <div class="slds-col slds-size_1-of-4">
+                                    <div class="slds-box slds-box_x-small slds-text-align_center">
+                                        <p class="slds-text-heading_medium">{compareDiffResult.totalChanges}</p>
+                                        <p class="slds-text-body_small slds-text-color_weak">Total Changes</p>
+                                    </div>
+                                </div>
+                                <div class="slds-col slds-size_1-of-4">
+                                    <div class="slds-box slds-box_x-small slds-text-align_center">
+                                        <p class="slds-text-heading_medium slds-text-color_success">{compareDiffResult.summary.added}</p>
+                                        <p class="slds-text-body_small slds-text-color_weak">Added</p>
+                                    </div>
+                                </div>
+                                <div class="slds-col slds-size_1-of-4">
+                                    <div class="slds-box slds-box_x-small slds-text-align_center">
+                                        <p class="slds-text-heading_medium slds-text-color_error">{compareDiffResult.summary.removed}</p>
+                                        <p class="slds-text-body_small slds-text-color_weak">Removed</p>
+                                    </div>
+                                </div>
+                                <div class="slds-col slds-size_1-of-4">
+                                    <div class="slds-box slds-box_x-small slds-text-align_center">
+                                        <p class="slds-text-heading_medium" style="color: #DD7A01;">{compareDiffResult.summary.modified}</p>
+                                        <p class="slds-text-body_small slds-text-color_weak">Modified</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- No changes -->
+                            <template lwc:if={compareDiffResult.noChanges}>
+                                <div class="slds-illustration slds-illustration_small slds-p-around_medium slds-text-align_center">
+                                    <lightning-icon icon-name="utility:check" size="large" variant="success"></lightning-icon>
+                                    <p class="slds-text-heading_small slds-m-top_small">No Differences Found</p>
+                                    <p class="slds-text-body_small slds-text-color_weak">These two versions are identical in structure and configuration.</p>
+                                </div>
+                            </template>
+
+                            <!-- Changes grouped by category -->
+                            <template lwc:if={compareDiffResult.hasChanges}>
+                                <template for:each={compareDiffResult.groupedChanges} for:item="group">
+                                    <div key={group.key} class="slds-m-bottom_medium">
+                                        <h3 class="slds-text-heading_small slds-m-bottom_x-small slds-border_bottom slds-p-bottom_x-small">
+                                            {group.category}
+                                        </h3>
+                                        <template for:each={group.changes} for:item="change">
+                                            <div key={change.key} class="compare-change-row slds-p-vertical_x-small slds-border_bottom">
+                                                <div class="slds-grid slds-grid_vertical-align-center">
+                                                    <span class={change.changeTypeBadgeClass}>{change.changeType}</span>
+                                                    <span class="slds-m-left_x-small slds-text-body_regular">
+                                                        <strong>{change.itemLabel}</strong>
+                                                        <template lwc:if={change.itemType}>
+                                                            <span class="slds-text-body_small slds-text-color_weak slds-m-left_xx-small">({change.itemType})</span>
+                                                        </template>
+                                                    </span>
+                                                    <span class="slds-col_bump-left">
+                                                        <span class={change.riskBadgeClass}>{change.riskLevel}</span>
+                                                    </span>
+                                                </div>
+                                                <p class="slds-text-body_small slds-m-top_xx-small slds-m-left_medium">{change.description}</p>
+                                                <template lwc:if={change.hasValues}>
+                                                    <div class="slds-m-left_medium slds-m-top_xx-small slds-text-body_small">
+                                                        <span class="slds-text-color_error">&minus; {change.oldValue}</span>
+                                                        <span class="slds-m-horizontal_xx-small">&rarr;</span>
+                                                        <span class="slds-text-color_success">+ {change.newValue}</span>
+                                                    </div>
+                                                </template>
+                                                <template lwc:if={change.riskReason}>
+                                                    <p class="slds-text-body_small slds-text-color_weak slds-m-left_medium slds-m-top_xx-small">
+                                                        {change.riskReason}
+                                                    </p>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </template>
+                        </template>
+                    </template>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button label="Close" onclick={handleCloseCompare}></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
     </template>
 </template>

@@ -501,6 +501,133 @@ public with sharing class FlowHealthController {
     }
 
     // =========================================================================
+    // SPRINT 6: VERSION COMPARISON
+    // =========================================================================
+
+    /**
+     * Returns all versions of a flow for the version selector dropdown.
+     *
+     * @param flowDeveloperName  The DeveloperName of the flow
+     * @return List of FlowVersionInfo objects (version number, status, modified by)
+     */
+    @AuraEnabled
+    public static List<FlowVersionService.FlowVersionInfo> getFlowVersions(String flowDeveloperName) {
+        try {
+            return FlowVersionService.getVersions(flowDeveloperName);
+        } catch (FlowMetadataService.FlowHealthException e) {
+            throw new AuraHandledException(e.getMessage());
+        } catch (Exception e) {
+            throw new AuraHandledException(
+                'Unable to load flow versions. Error: ' + e.getMessage()
+            );
+        }
+    }
+
+    /**
+     * Compares two flow versions by their Tooling API record Ids.
+     * Returns a structured diff with changes, score delta, and risk assessment.
+     *
+     * @param oldVersionId  The Id of the older version
+     * @param newVersionId  The Id of the newer version
+     * @return FlowDiffResult with all changes and summary
+     */
+    @AuraEnabled
+    public static FlowDiffResult compareFlowVersions(String oldVersionId, String newVersionId) {
+        try {
+            return FlowVersionService.compareVersions(oldVersionId, newVersionId);
+        } catch (FlowMetadataService.FlowHealthException e) {
+            throw new AuraHandledException(e.getMessage());
+        } catch (Exception e) {
+            throw new AuraHandledException(
+                'Unable to compare flow versions. Error: ' + e.getMessage()
+            );
+        }
+    }
+
+    /**
+     * Compares two flow XML strings (Privacy Mode — no Tooling API callout).
+     * Used when users upload XML files directly.
+     *
+     * @param oldXml  The XML content of the older version
+     * @param newXml  The XML content of the newer version
+     * @return FlowDiffResult with all changes and summary
+     */
+    @AuraEnabled
+    public static FlowDiffResult compareFlowXml(String oldXml, String newXml) {
+        try {
+            FlowMetadata.FlowDefinition oldFlow = FlowXmlParser.parse(oldXml);
+            FlowMetadata.FlowDefinition newFlow = FlowXmlParser.parse(newXml);
+            return FlowVersionService.compareDefinitions(oldFlow, newFlow);
+        } catch (FlowMetadataService.FlowHealthException e) {
+            throw new AuraHandledException(e.getMessage());
+        } catch (Exception e) {
+            throw new AuraHandledException(
+                'Unable to compare flow XML. Error: ' + e.getMessage()
+            );
+        }
+    }
+
+    /**
+     * Analyzes a flow from its XML content (Privacy Mode — no Tooling API callout).
+     * Used when users upload a flow XML file directly.
+     *
+     * @param xmlContent  The raw XML content of the flow
+     * @return FlowAnalysisService.AnalysisResult - score, grade, findings, breakdowns
+     */
+    @AuraEnabled
+    public static FlowAnalysisService.AnalysisResult analyzeFlowXml(String xmlContent) {
+        try {
+            FlowMetadata.FlowDefinition flow = FlowXmlParser.parse(xmlContent);
+            return FlowAnalysisService.analyzeFlowDefinition(flow);
+        } catch (FlowMetadataService.FlowHealthException e) {
+            throw new AuraHandledException(e.getMessage());
+        } catch (Exception e) {
+            throw new AuraHandledException(
+                'Unable to analyze flow XML. Error: ' + e.getMessage()
+            );
+        }
+    }
+
+    // =========================================================================
+    // SPRINT 7: PERMSET PATCHMASTER
+    // =========================================================================
+
+    /**
+     * Generates a patched Permission Set XML by merging Source (Dev) into
+     * Destination (Prod/Target). Prevents destructive overwrites during deployment.
+     *
+     * @param destinationXml  The "truth" from the target/production Org
+     * @param sourceXml       The new changes from the dev Org
+     * @return PermSetPatchService.PatchResult with merged XML and diff details
+     */
+    @AuraEnabled
+    public static PermSetPatchService.PatchResult generatePermSetPatch(
+        String destinationXml, String sourceXml
+    ) {
+        try {
+            if (String.isBlank(destinationXml)) {
+                throw new AuraHandledException(
+                    'Destination (Base) Permission Set XML is required.'
+                );
+            }
+            if (String.isBlank(sourceXml)) {
+                throw new AuraHandledException(
+                    'Source (Delta) Permission Set XML is required.'
+                );
+            }
+            return PermSetPatchService.generatePatch(destinationXml, sourceXml);
+        } catch (FlowMetadataService.FlowHealthException e) {
+            throw new AuraHandledException(e.getMessage());
+        } catch (AuraHandledException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new AuraHandledException(
+                'Unable to generate Permission Set patch. Error: ' + e.getMessage()
+            );
+        }
+    }
+
+    // =========================================================================
     // PRIVATE HELPERS
     // =========================================================================
 
