@@ -605,7 +605,7 @@
                 <!-- Critical=100, High=50, Medium=10, Low=1                      -->
                 <!-- ============================================================ -->
                 <template lwc:if={hasStrategicInsights}>
-                    <lightning-card title="Strategic Action Plan" icon-name="standard:threat_detection" class="slds-m-bottom_medium">
+                    <lightning-card title="Strategic Action Plan" icon-name="utility:target" class="slds-m-bottom_medium">
                         <div slot="actions">
                             <lightning-badge label="Weighted Priority" class="slds-badge_inverse"></lightning-badge>
                         </div>
@@ -676,7 +676,7 @@
                                                     </div>
                                                     <div class="slds-col slds-shrink-none" style="min-width: 10rem;">
                                                         <span class="slds-text-body_small">
-                                                            Priority Score: <strong>{insight.strategicPriority}</strong>
+                                                            Priority Score: <strong>{insight.displayPriority}</strong>
                                                         </span>
                                                     </div>
                                                 </div>
@@ -760,7 +760,7 @@
                                                     </div>
                                                     <div class="slds-col slds-shrink-none" style="min-width: 10rem;">
                                                         <span class="slds-text-body_small">
-                                                            Priority Score: <strong>{insight.strategicPriority}</strong>
+                                                            Priority Score: <strong>{insight.displayPriority}</strong>
                                                         </span>
                                                     </div>
                                                 </div>
@@ -1334,41 +1334,12 @@
 
             <!-- Dual XML Input Area -->
             <div class="patchmaster-dual-input slds-grid slds-gutters_medium slds-m-bottom_medium slds-wrap">
-                <!-- Input A: Destination / Base -->
-                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                    <div class="patchmaster-input-panel patchmaster-dest-panel">
-                        <div class="slds-form-element">
-                            <label class="slds-form-element__label">
-                                <span class="patchmaster-label-badge patchmaster-label-dest">A</span>
-                                <strong>Destination / Base</strong>
-                                <span class="slds-text-body_small slds-text-color_weak slds-m-left_xx-small">— The "truth" from Production</span>
-                            </label>
-                            <div class="slds-form-element__control">
-                                <textarea
-                                    class="slds-textarea permset-xml-textarea"
-                                    placeholder="Paste the Production / Target Org&#10;.permissionset-meta.xml here..."
-                                    value={patchDestXml}
-                                    onchange={handlePatchDestChange}
-                                    rows="14"
-                                ></textarea>
-                            </div>
-                        </div>
-                        <div class="slds-m-top_x-small">
-                            <label class="slds-button slds-button_neutral slds-button_small">
-                                <lightning-icon icon-name="utility:upload" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
-                                Upload Destination XML
-                                <input type="file" accept=".xml,.permissionset-meta.xml" data-input="dest" onchange={handlePatchFileUpload} class="slds-hide" />
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Input B: Source / Delta -->
+                <!-- Input A: Source / Delta (LEFT) -->
                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
                     <div class="patchmaster-input-panel patchmaster-src-panel">
                         <div class="slds-form-element">
                             <label class="slds-form-element__label">
-                                <span class="patchmaster-label-badge patchmaster-label-src">B</span>
+                                <span class="patchmaster-label-badge patchmaster-label-src">A</span>
                                 <strong>Source / Delta</strong>
                                 <span class="slds-text-body_small slds-text-color_weak slds-m-left_xx-small">— New changes from Dev Org</span>
                             </label>
@@ -1387,6 +1358,35 @@
                                 <lightning-icon icon-name="utility:upload" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
                                 Upload Source XML
                                 <input type="file" accept=".xml,.permissionset-meta.xml" data-input="src" onchange={handlePatchFileUpload} class="slds-hide" />
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input B: Destination / Base (RIGHT) -->
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <div class="patchmaster-input-panel patchmaster-dest-panel">
+                        <div class="slds-form-element">
+                            <label class="slds-form-element__label">
+                                <span class="patchmaster-label-badge patchmaster-label-dest">B</span>
+                                <strong>Destination / Base</strong>
+                                <span class="slds-text-body_small slds-text-color_weak slds-m-left_xx-small">— The "truth" from Production</span>
+                            </label>
+                            <div class="slds-form-element__control">
+                                <textarea
+                                    class="slds-textarea permset-xml-textarea"
+                                    placeholder="Paste the Production / Target Org&#10;.permissionset-meta.xml here..."
+                                    value={patchDestXml}
+                                    onchange={handlePatchDestChange}
+                                    rows="14"
+                                ></textarea>
+                            </div>
+                        </div>
+                        <div class="slds-m-top_x-small">
+                            <label class="slds-button slds-button_neutral slds-button_small">
+                                <lightning-icon icon-name="utility:upload" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                Upload Destination XML
+                                <input type="file" accept=".xml,.permissionset-meta.xml" data-input="dest" onchange={handlePatchFileUpload} class="slds-hide" />
                             </label>
                         </div>
                     </div>
@@ -1436,9 +1436,9 @@
                     <div class="patchmaster-hero slds-m-bottom_medium">
                         <div class="slds-grid slds-grid_align-center slds-grid_vertical-align-center slds-wrap" style="gap: 2rem;">
                             <div class="slds-text-align_center">
-                                <p class="slds-text-title_caps slds-m-bottom_xx-small">Destination</p>
-                                <p style="font-size: 2rem; font-weight: 700; color: #0176d3;">
-                                    {patchResult.destinationPermCount}
+                                <p class="slds-text-title_caps slds-m-bottom_xx-small">Source</p>
+                                <p style="font-size: 2rem; font-weight: 700; color: #e87400;">
+                                    {patchResult.sourcePermCount}
                                 </p>
                                 <p class="slds-text-body_small slds-text-color_weak">permissions</p>
                             </div>
@@ -1446,9 +1446,9 @@
                                 <lightning-icon icon-name="utility:add" size="small" style="color: #04844B;"></lightning-icon>
                             </div>
                             <div class="slds-text-align_center">
-                                <p class="slds-text-title_caps slds-m-bottom_xx-small">Source</p>
-                                <p style="font-size: 2rem; font-weight: 700; color: #e87400;">
-                                    {patchResult.sourcePermCount}
+                                <p class="slds-text-title_caps slds-m-bottom_xx-small">Destination</p>
+                                <p style="font-size: 2rem; font-weight: 700; color: #0176d3;">
+                                    {patchResult.destinationPermCount}
                                 </p>
                                 <p class="slds-text-body_small slds-text-color_weak">permissions</p>
                             </div>
@@ -1518,17 +1518,15 @@
                             </button>
                         </div>
 
-                        <!-- Preview -->
+                        <!-- Preview Toggle -->
                         <div class="slds-m-top_small">
-                            <details>
-                                <summary class="slds-text-body_small" style="cursor: pointer; color: #0176d3;">Preview patched XML</summary>
-                                <textarea
-                                    class="slds-textarea permset-xml-preview"
-                                    readonly=""
-                                    rows="15"
-                                    value={patchResult.patchedXml}
-                                ></textarea>
-                            </details>
+                            <a href="javascript:void(0);" onclick={handleTogglePatchedXmlPreview} class="slds-text-body_small" style="color: #0176d3; cursor: pointer; text-decoration: none;">
+                                <lightning-icon icon-name={patchedXmlPreviewIcon} size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                {patchedXmlPreviewLabel}
+                            </a>
+                            <template lwc:if={showPatchedXmlPreview}>
+                                <pre class="permset-xml-preview slds-m-top_x-small" style="max-height: 400px; overflow: auto; background: #1e1e1e; color: #d4d4d4; padding: 0.75rem; border-radius: 4px; font-size: 0.75rem; font-family: 'SF Mono', 'Consolas', 'Monaco', monospace; white-space: pre; margin: 0;">{patchedXmlValue}</pre>
+                            </template>
                         </div>
                     </div>
                 </div>

@@ -175,6 +175,7 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
     @track patchLoading = false;
     @track patchError = null;
     @track patchSuccessVisible = false;    // Success toast visibility
+    @track showPatchedXmlPreview = false;  // Toggle for patched XML preview
 
     // =========================================================================
     // VIEW TOGGLE HANDLERS
@@ -811,7 +812,7 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
                         insight.totalCount,
                         insight.affectedFlowCount,
                         insight.affectedPercent + '%',
-                        insight.strategicPriority,
+                        insight.displayPriority,
                         this.csvEscape(this.wrapText(insight.description, 60)),
                         this.csvEscape(this.wrapText(insight.remediation, 60))
                     ]);
@@ -829,7 +830,7 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
                         insight.totalCount,
                         insight.affectedFlowCount,
                         insight.affectedPercent + '%',
-                        insight.strategicPriority,
+                        insight.displayPriority,
                         this.csvEscape(this.wrapText(insight.description, 60)),
                         this.csvEscape(this.wrapText(insight.remediation, 60))
                     ]);
@@ -1327,11 +1328,17 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
                     '%). Concentrated risk — prioritize for targeted remediation.';
             }
 
+            // Normalize priority to a 0–100 display score
+            const displayPriority = maxPriority > 0
+                ? Math.round((insight.strategicPriority / maxPriority) * 100)
+                : 0;
+
             return {
                 ...insight,
                 key: 'insight_' + idx,
                 rank: idx + 1,
                 rankLabel: '#' + (idx + 1),
+                displayPriority: displayPriority,
                 progressBarWidth: 'width:' + barPercent + '%',
                 businessImpact: impactText,
                 isExpanded: false
@@ -2178,6 +2185,7 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
         this.patchError = null;
         this.patchResult = null;
         this.patchSuccessVisible = false;
+        this.showPatchedXmlPreview = false;
 
         generatePermSetPatch({
             destinationXml: this.patchDestXml,
@@ -2208,6 +2216,34 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
         this.patchError = null;
         this.patchLoading = false;
         this.patchSuccessVisible = false;
+        this.showPatchedXmlPreview = false;
+
+        // Force-clear textarea DOM values (LWC one-way binding won't
+        // reliably sync empty-string back to a manually-edited textarea)
+        this.template.querySelectorAll('.permset-xml-textarea').forEach(el => {
+            el.value = '';
+        });
+
+        // Reset file-upload inputs so the same file can be re-selected
+        this.template.querySelectorAll('input[type="file"]').forEach(el => {
+            el.value = '';
+        });
+    }
+
+    handleTogglePatchedXmlPreview() {
+        this.showPatchedXmlPreview = !this.showPatchedXmlPreview;
+    }
+
+    get patchedXmlPreviewLabel() {
+        return this.showPatchedXmlPreview ? 'Hide patched XML' : 'Preview patched XML';
+    }
+
+    get patchedXmlPreviewIcon() {
+        return this.showPatchedXmlPreview ? 'utility:chevrondown' : 'utility:chevronright';
+    }
+
+    get patchedXmlValue() {
+        return this.patchResult ? this.patchResult.patchedXml || '' : '';
     }
 
     handleDownloadPatchedXml() {
