@@ -362,4 +362,57 @@ private class FH_MetadataValidatorTest {
         Assert.areEqual(1, report.totalMissingCount);
         Assert.isTrue(report.summaryMessage.contains('1 missing dependency'), 'Singular form for 1');
     }
+
+    // =========================================================================
+    // TEST: Comparable — sort order and null safety
+    // =========================================================================
+
+    @IsTest
+    static void testCompareTo_SortsByTypeAndName() {
+        // Create dependencies with different types and names (including namespaced)
+        FH_MetadataValidator.MissingDependency fieldB = new FH_MetadataValidator.MissingDependency(
+            'pse__Timecard_Header__c.End_Time__c', 'CustomField', 'pse__Timecard_Header__c', 'fieldPermissions'
+        );
+        FH_MetadataValidator.MissingDependency fieldA = new FH_MetadataValidator.MissingDependency(
+            'Account.Industry', 'CustomField', 'Account', 'fieldPermissions'
+        );
+        FH_MetadataValidator.MissingDependency obj = new FH_MetadataValidator.MissingDependency(
+            'Product_Display_Group__c', 'CustomObject', null, 'objectPermissions'
+        );
+        FH_MetadataValidator.MissingDependency cls = new FH_MetadataValidator.MissingDependency(
+            'DevOnlyController', 'ApexClass', null, 'classAccesses'
+        );
+
+        List<FH_MetadataValidator.MissingDependency> deps =
+            new List<FH_MetadataValidator.MissingDependency>{ fieldB, fieldA, obj, cls };
+
+        Test.startTest();
+        deps.sort();
+        Test.stopTest();
+
+        // Expected order: ApexClass, CustomField (Account...), CustomField (pse__...), CustomObject
+        Assert.areEqual('ApexClass', deps[0].dependencyType, 'ApexClass should sort first');
+        Assert.areEqual('Account.Industry', deps[1].name, 'Account field before pse__ field');
+        Assert.areEqual('pse__Timecard_Header__c.End_Time__c', deps[2].name, 'pse__ field second');
+        Assert.areEqual('CustomObject', deps[3].dependencyType, 'CustomObject sorts last');
+    }
+
+    @IsTest
+    static void testCompareTo_NullSafety() {
+        FH_MetadataValidator.MissingDependency withNulls = new FH_MetadataValidator.MissingDependency(
+            null, null, null, null
+        );
+        FH_MetadataValidator.MissingDependency withValues = new FH_MetadataValidator.MissingDependency(
+            'Test__c', 'CustomObject', null, 'objectPermissions'
+        );
+
+        // Should not throw — null-safe compareTo
+        Test.startTest();
+        Integer result = withNulls.compareTo(withValues);
+        Integer resultNull = withNulls.compareTo(null);
+        Test.stopTest();
+
+        Assert.isTrue(result < 0, 'Empty string sorts before CustomObject');
+        Assert.areEqual(1, resultNull, 'Comparing to null returns 1');
+    }
 }

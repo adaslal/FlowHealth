@@ -658,7 +658,9 @@ public with sharing class FlowHealthController {
             throw e;
         } catch (Exception e) {
             throw new AuraHandledException(
-                'Unable to validate dependencies. Error: ' + e.getMessage()
+                'Validation Error: The engine encountered an issue parsing the metadata structure. '
+                + 'Please ensure both XML files are valid Permission Sets. '
+                + '(Detail: ' + e.getMessage() + ')'
             );
         }
     }

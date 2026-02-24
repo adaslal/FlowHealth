@@ -43,8 +43,10 @@ public with sharing class FH_MetadataValidator {
 
     /**
      * A single missing dependency with enough context for the UI.
+     * Implements Comparable so Lists can be sorted by dependencyType → name.
+     * Handles managed-package namespaces (e.g. pse__) gracefully.
      */
-    public class MissingDependency {
+    public class MissingDependency implements Comparable {
         @AuraEnabled public String name;           // e.g. 'Product_Display_Group__c'
         @AuraEnabled public String dependencyType; // e.g. 'CustomObject', 'CustomField'
         @AuraEnabled public String parentObject;   // For fields: the parent object name
@@ -55,6 +57,26 @@ public with sharing class FH_MetadataValidator {
             this.dependencyType = dependencyType;
             this.parentObject = parentObject;
             this.xmlContext = xmlContext;
+        }
+
+        /**
+         * Sort by dependencyType (alphabetical), then by name (alphabetical).
+         * Null-safe for all fields.
+         */
+        public Integer compareTo(Object other) {
+            if (other == null) return 1;
+            MissingDependency that = (MissingDependency) other;
+
+            // Primary sort: dependencyType
+            String thisType = this.dependencyType != null ? this.dependencyType : '';
+            String thatType = that.dependencyType != null ? that.dependencyType : '';
+            Integer typeCompare = thisType.compareTo(thatType);
+            if (typeCompare != 0) return typeCompare;
+
+            // Secondary sort: name (handles namespaces like pse__ naturally)
+            String thisName = this.name != null ? this.name : '';
+            String thatName = that.name != null ? that.name : '';
+            return thisName.compareTo(thatName);
         }
     }
 
