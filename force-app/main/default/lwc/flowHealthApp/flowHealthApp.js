@@ -34,6 +34,8 @@ import getFlowVersions from '@salesforce/apex/FlowHealthController.getFlowVersio
 import compareFlowVersions from '@salesforce/apex/FlowHealthController.compareFlowVersions';
 // Sprint 7: PermSet Patchmaster
 import generatePermSetPatch from '@salesforce/apex/FlowHealthController.generatePermSetPatch';
+// Sprint 8: Metadata Dependency Validator
+import validatePermSetDependencies from '@salesforce/apex/FlowHealthController.validatePermSetDependencies';
 
 // Process type labels (shared between single + bulk views)
 const PROCESS_TYPE_LABELS = {
@@ -176,6 +178,11 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
     @track patchError = null;
     @track patchSuccessVisible = false;    // Success toast visibility
     @track showPatchedXmlPreview = false;  // Toggle for patched XML preview
+
+    // Sprint 8: Metadata Dependency Validator state
+    @track validationResult = null;        // FH_MetadataValidator.ValidationReport
+    @track validationLoading = false;
+    @track validationError = null;
 
     // =========================================================================
     // VIEW TOGGLE HANDLERS
@@ -2152,12 +2159,16 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
         this.patchDestXml = event.target.value;
         this.patchResult = null;
         this.patchError = null;
+        this.validationResult = null;
+        this.validationError = null;
     }
 
     handlePatchSrcChange(event) {
         this.patchSrcXml = event.target.value;
         this.patchResult = null;
         this.patchError = null;
+        this.validationResult = null;
+        this.validationError = null;
     }
 
     handlePatchFileUpload(event) {
@@ -2217,6 +2228,10 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
         this.patchLoading = false;
         this.patchSuccessVisible = false;
         this.showPatchedXmlPreview = false;
+        // Clear validation state (Sprint 8)
+        this.validationResult = null;
+        this.validationError = null;
+        this.validationLoading = false;
 
         // Force-clear textarea DOM values (LWC one-way binding won't
         // reliably sync empty-string back to a manually-edited textarea)
@@ -2318,9 +2333,89 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
     // Computed: Patchmaster view properties
     get hasPatchDestXml() { return this.patchDestXml && this.patchDestXml.trim().length > 0; }
     get hasPatchSrcXml() { return this.patchSrcXml && this.patchSrcXml.trim().length > 0; }
-    get patchGenerateDisabled() { return !this.hasPatchDestXml || !this.hasPatchSrcXml || this.patchLoading; }
+    get patchGenerateDisabled() { return !this.hasPatchDestXml || !this.hasPatchSrcXml || this.patchLoading || this.validationLoading; }
     get hasPatchError() { return this.patchError !== null; }
     get hasPatchResult() { return this.patchResult !== null; }
+
+    // =========================================================================
+    // SPRINT 8: METADATA DEPENDENCY VALIDATOR
+    // =========================================================================
+
+    get patchValidateDisabled() {
+        return !this.hasPatchDestXml || !this.hasPatchSrcXml || this.validationLoading || this.patchLoading;
+    }
+
+    get hasValidationResult() { return this.validationResult !== null; }
+    get hasValidationError() { return this.validationError !== null; }
+
+    /**
+     * Enrich the validation report with display-ready properties for the LWC.
+     */
+    enrichValidationReport(report) {
+        if (!report) return null;
+
+        // Build categorized missing dependency groups (only non-empty ones)
+        const groups = [];
+        const addGroup = (label, icon, items, severity) => {
+            if (items && items.length > 0) {
+                groups.push({
+                    key: 'vg_' + label.replace(/\s/g, '_'),
+                    label: label,
+                    icon: icon,
+                    count: items.length,
+                    severity: severity,
+                    items: items.map((item, idx) => ({
+                        ...item,
+                        key: 'vi_' + idx + '_' + item.name,
+                        displayName: item.parentObject
+                            ? item.parentObject + ' → ' + item.name.split('.').pop()
+                            : item.name
+                    }))
+                });
+            }
+        };
+
+        addGroup('Custom Objects',      'standard:custom_object',     report.missingObjects,           'critical');
+        addGroup('Custom Fields',       'standard:custom_field',      report.missingFields,            'critical');
+        addGroup('Apex Classes',        'standard:apex',              report.missingClasses,           'high');
+        addGroup('Visualforce Pages',   'standard:visualforce_page',  report.missingPages,             'high');
+        addGroup('Tabs',                'standard:custom_tab',        report.missingTabs,              'medium');
+        addGroup('Record Types',        'standard:record',            report.missingRecordTypes,       'medium');
+        addGroup('Custom Permissions',  'standard:permission_set',    report.missingCustomPermissions, 'low');
+        addGroup('Applications',        'standard:app',               report.missingApplications,      'low');
+
+        return {
+            ...report,
+            groups: groups,
+            hasGroups: groups.length > 0
+        };
+    }
+
+    /**
+     * Validate Source XML dependencies against Destination XML.
+     */
+    handleValidateDependencies() {
+        if (!this.patchSrcXml || !this.patchDestXml) return;
+
+        this.validationLoading = true;
+        this.validationError = null;
+        this.validationResult = null;
+        this.patchResult = null;
+        this.patchError = null;
+
+        validatePermSetDependencies({
+            sourceXml: this.patchSrcXml,
+            destinationXml: this.patchDestXml
+        })
+            .then(result => {
+                this.validationResult = this.enrichValidationReport(result);
+                this.validationLoading = false;
+            })
+            .catch(error => {
+                this.validationError = this.extractError(error);
+                this.validationLoading = false;
+            });
+    }
 
     // =========================================================================
     // SHARED HELPERS

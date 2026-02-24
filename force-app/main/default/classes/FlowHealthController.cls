@@ -627,6 +627,42 @@ public with sharing class FlowHealthController {
         }
     }
 
+    /**
+     * Sprint 8: Validate Source XML dependencies against Destination XML.
+     * Surfaces objects, fields, classes, pages, tabs, etc. that exist in Source
+     * but are missing from Destination — preventing deployment failures.
+     *
+     * @param sourceXml      The Dev / Source Org permission set XML
+     * @param destinationXml The Prod / UAT Destination Org permission set XML
+     * @return FH_MetadataValidator.ValidationReport
+     */
+    @AuraEnabled
+    public static FH_MetadataValidator.ValidationReport validatePermSetDependencies(
+        String sourceXml, String destinationXml
+    ) {
+        try {
+            if (String.isBlank(sourceXml)) {
+                throw new AuraHandledException(
+                    'Source (Delta) Permission Set XML is required for validation.'
+                );
+            }
+            if (String.isBlank(destinationXml)) {
+                throw new AuraHandledException(
+                    'Destination (Base) Permission Set XML is required for validation.'
+                );
+            }
+            return FH_MetadataValidator.validatePermSetDependencies(sourceXml, destinationXml);
+        } catch (FlowMetadataService.FlowHealthException e) {
+            throw new AuraHandledException(e.getMessage());
+        } catch (AuraHandledException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new AuraHandledException(
+                'Unable to validate dependencies. Error: ' + e.getMessage()
+            );
+        }
+    }
+
     // =========================================================================
     // PRIVATE HELPERS
     // =========================================================================
