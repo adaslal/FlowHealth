@@ -1071,3 +1071,314 @@
 .cosmetic-toggle {
     --sds-c-input-toggle-color-background-checked: #0176d3;
 }
+
+/* =========================================================================
+   LOGIC AUDIT VIEW (Sprint 8 — Sanity Engine)
+   ========================================================================= */
+
+/* Result header card */
+.audit-result-header {
+    border-left: 4px solid #2e844a;
+    background: linear-gradient(135deg, #f0faf3 0%, #ffffff 100%);
+}
+
+/* Hash display box */
+.audit-hash-box {
+    background: #1b2531;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    text-align: center;
+}
+
+.audit-hash-box .slds-text-title_bold {
+    color: #8c9cb0;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.audit-hash-value {
+    font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+    font-size: 0.95rem;
+    color: #4cd964;
+    word-break: break-all;
+    line-height: 1.4;
+}
+
+/* File chooser label */
+.audit-file-name {
+    font-size: 0.8125rem;
+    vertical-align: middle;
+}
+
+/* Element summary chips */
+.audit-chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.audit-chip {
+    background-color: #f0f1f4;
+    color: #3e3e3c;
+    border-radius: 1rem;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Clean audit banner */
+.audit-clean-banner {
+    border-left: 4px solid #2e844a;
+    background: linear-gradient(135deg, #e6f9ed 0%, #ffffff 100%);
+}
+
+/* Warning cards */
+.audit-warning-card {
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e5e7eb;
+    transition: box-shadow 0.15s ease;
+}
+
+.audit-warning-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.audit-card-critical .audit-warning-card,
+.audit-card-critical {
+    border-left: 4px solid #c23934;
+    background: linear-gradient(135deg, #fef1f1 0%, #ffffff 100%);
+}
+
+.audit-card-high .audit-warning-card,
+.audit-card-high {
+    border-left: 4px solid #e87400;
+    background: linear-gradient(135deg, #fff8f0 0%, #ffffff 100%);
+}
+
+.audit-card-medium .audit-warning-card,
+.audit-card-medium {
+    border-left: 4px solid #f4bc25;
+    background: linear-gradient(135deg, #fffdf0 0%, #ffffff 100%);
+}
+
+.audit-card-low .audit-warning-card,
+.audit-card-low {
+    border-left: 4px solid #0176d3;
+    background: linear-gradient(135deg, #f0f6ff 0%, #ffffff 100%);
+}
+
+.audit-icon-critical {
+    --sds-c-icon-color-foreground-default: #c23934;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* Toggle headers for collapsible sections */
+.audit-toggle-header {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 0.25rem 0;
+    user-select: none;
+}
+
+.audit-toggle-header:hover {
+    opacity: 0.8;
+}
+
+/* Trace table container */
+.audit-trace-container {
+    max-height: 500px;
+    overflow-y: auto;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+}
+
+/* Custom trace table — clean zebra stripes, no yellowish tint */
+.audit-trace-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+.audit-trace-table thead tr {
+    background: #f4f6f9;
+    border-bottom: 2px solid #d8dce6;
+}
+
+.audit-trace-table th {
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #706e6b;
+    vertical-align: top;
+}
+
+.audit-trace-table td {
+    padding: 0.55rem 0.75rem;
+    vertical-align: top;
+    border-bottom: 1px solid #f0f1f4;
+    color: #3e3e3c;
+}
+
+/* Clean alternating zebra stripes */
+.audit-trace-table tbody tr:nth-child(odd) {
+    background: #ffffff;
+}
+
+.audit-trace-table tbody tr:nth-child(even) {
+    background: #f9f9f9;
+}
+
+.audit-trace-table tbody tr:hover {
+    background: #eef3f8;
+}
+
+/* Step number cell */
+.audit-trace-step-cell {
+    text-align: center;
+    font-weight: 600;
+    color: #706e6b;
+    font-size: 0.75rem;
+}
+
+/* Meaning cell — full width wrap */
+.audit-trace-meaning-cell {
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+/* Impact cell — subtle differentiation */
+.audit-trace-impact-cell {
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: #706e6b;
+    font-style: italic;
+}
+
+/* Bold domain keywords in Impact column */
+.audit-impact-keyword {
+    font-weight: 700;
+    color: #3e3e3c;
+    font-style: italic;
+}
+
+/* Token code styling */
+.audit-token-code {
+    font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+    font-size: 0.72rem;
+    background: #eef1f6;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.25rem;
+    color: #0176d3;
+    white-space: nowrap;
+}
+
+/* Category accent — left border only (no background override for clean zebra) */
+.audit-trace-cat-start {
+    border-left: 3px solid #0176d3 !important;
+}
+
+.audit-trace-cat-logic {
+    border-left: 3px solid #9b59b6 !important;
+}
+
+.audit-trace-cat-data {
+    border-left: 3px solid #e87400 !important;
+}
+
+.audit-trace-cat-loop {
+    border-left: 3px solid #f4bc25 !important;
+}
+
+.audit-trace-cat-action {
+    border-left: 3px solid #d8dce6 !important;
+}
+
+.audit-trace-cat-ui {
+    border-left: 3px solid #00b4d8 !important;
+}
+
+.audit-trace-cat-error {
+    border-left: 3px solid #c23934 !important;
+    background: rgba(194, 57, 52, 0.04) !important;
+}
+
+/* Sovereign Flowchart wrapper */
+.audit-flowchart-wrapper {
+    background: #1b2531;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    overflow: auto;
+    max-height: 700px;
+}
+
+.audit-flowchart-scaler {
+    transition: transform 0.2s ease;
+    transform-origin: top center;
+}
+
+.audit-flowchart-container {
+    min-height: 80px;
+    display: flex;
+    justify-content: center;
+}
+
+/* Zoom slider */
+.audit-zoom-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 140px;
+    height: 4px;
+    background: #d8dce6;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.audit-zoom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #0176d3;
+    cursor: pointer;
+    border: 2px solid #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.audit-zoom-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #0176d3;
+    cursor: pointer;
+    border: 2px solid #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Token sequence pre block */
+.audit-token-sequence {
+    font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+    font-size: 0.8rem;
+    background: #1b2531;
+    color: #4cd964;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.6;
+    max-height: 300px;
+    overflow-y: auto;
+}

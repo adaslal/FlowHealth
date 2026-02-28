@@ -57,6 +57,10 @@
             <lightning-icon icon-name="utility:merge" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
             PermSet Patchmaster
         </button>
+        <button class={auditToggleClass} data-view="audit" onclick={handleViewToggle}>
+            <lightning-icon icon-name="utility:target" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+            Logic Audit
+        </button>
     </div>
 
     <!-- ================================================================ -->
@@ -1348,7 +1352,7 @@
                                     class="slds-textarea permset-xml-textarea"
                                     placeholder="Paste the Dev / Source Org&#10;.permissionset-meta.xml here..."
                                     value={patchSrcXml}
-                                    onchange={handlePatchSrcChange}
+                                    oninput={handlePatchSrcChange}
                                     rows="14"
                                 ></textarea>
                             </div>
@@ -1377,7 +1381,7 @@
                                     class="slds-textarea permset-xml-textarea"
                                     placeholder="Paste the Production / Target Org&#10;.permissionset-meta.xml here..."
                                     value={patchDestXml}
-                                    onchange={handlePatchDestChange}
+                                    oninput={handlePatchDestChange}
                                     rows="14"
                                 ></textarea>
                             </div>
@@ -1885,5 +1889,269 @@
             </div>
         </section>
         <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
+    <!-- ================================================================ -->
+    <!-- LOGIC AUDIT VIEW (Sprint 8 — Sanity Engine)                      -->
+    <!-- ================================================================ -->
+    <template lwc:if={isAuditView}>
+        <div class="slds-card slds-p-around_medium slds-m-bottom_medium">
+            <div class="slds-card__header">
+                <h2 class="slds-text-heading_medium">
+                    <lightning-icon icon-name="utility:target" size="small" class="slds-m-right_x-small"></lightning-icon>
+                    Logic Audit — Deterministic Flow Analysis
+                </h2>
+                <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                    Paste or upload a Flow XML (.flow-meta.xml) to generate a deterministic Logic Hash — no internet, no AI, pure structural analysis.
+                </p>
+            </div>
+
+            <!-- XML Input Area -->
+            <div class="slds-m-top_medium">
+                <div class="slds-form-element">
+                    <label class="slds-form-element__label slds-text-title_bold" for="audit-xml-input">
+                        Flow XML
+                    </label>
+                    <div class="slds-form-element__control">
+                        <textarea
+                            class="slds-textarea audit-xml-textarea"
+                            placeholder="Paste your .flow-meta.xml content here..."
+                            rows="8"
+                            oninput={handleAuditXmlChange}></textarea>
+                    </div>
+                </div>
+
+                <!-- File Upload -->
+                <div class="slds-m-top_small slds-grid slds-grid_vertical-align-center slds-wrap">
+                    <div class="slds-col slds-m-right_medium">
+                        <input type="file" accept=".xml,.flow-meta.xml,.flow" class="slds-hide" data-id="auditFileInput" onchange={handleAuditFileUpload} />
+                        <lightning-button variant="neutral" label="Choose File" icon-name="utility:upload" onclick={handleAuditFileChoose}></lightning-button>
+                        <span class="audit-file-name slds-m-left_small slds-text-color_weak">{auditFileName}</span>
+                    </div>
+                    <div class="slds-col">
+                        <lightning-input
+                            type="checkbox"
+                            label="Strip Managed Package Namespaces (Rule 8)"
+                            checked={auditStripNamespaces}
+                            onchange={handleAuditNamespaceToggle}
+                            class="slds-m-top_xx-small">
+                        </lightning-input>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                    <div>
+                        <lightning-button
+                            variant="brand"
+                            label="Run Logic Audit"
+                            icon-name="utility:play"
+                            disabled={auditRunDisabled}
+                            onclick={handleRunLogicAudit}>
+                        </lightning-button>
+                        <lightning-button
+                            variant="neutral"
+                            label="Reset"
+                            icon-name="utility:refresh"
+                            onclick={handleAuditReset}
+                            class="slds-m-left_small">
+                        </lightning-button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Display -->
+        <template lwc:if={hasAuditError}>
+            <div class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_medium" role="alert">
+                <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" class="slds-m-right_x-small"></lightning-icon>
+                <h2>{auditError}</h2>
+            </div>
+        </template>
+
+        <!-- Results Panel -->
+        <template lwc:if={hasAuditResult}>
+
+            <!-- Flow Info + Hash Header -->
+            <div class="slds-card slds-p-around_medium slds-m-bottom_medium audit-result-header">
+                <div class="slds-grid slds-wrap slds-grid_vertical-align-center">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <h2 class="slds-text-heading_small slds-m-bottom_xx-small">
+                            <lightning-icon icon-name="utility:check" size="xx-small" class="slds-m-right_xx-small" variant="success"></lightning-icon>
+                            Analysis Complete
+                        </h2>
+                        <p class="slds-text-body_small slds-text-color_weak">{auditResult.processingLabel}</p>
+                        <template lwc:if={auditResult.flowType}>
+                            <p class="slds-text-body_small slds-m-top_xx-small">
+                                <strong>Type:</strong> {auditResult.flowType}
+                                <template lwc:if={auditResult.apiVersion}>
+                                    &nbsp;•&nbsp; <strong>API:</strong> v{auditResult.apiVersion}
+                                </template>
+                            </p>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Element Summary Chips -->
+            <template lwc:if={auditResult.hasChips}>
+                <div class="slds-card slds-p-around_medium slds-m-bottom_medium">
+                    <h3 class="slds-text-title_bold slds-m-bottom_small">Element Breakdown</h3>
+                    <div class="audit-chips-container">
+                        <template for:each={auditResult.chips} for:item="chip">
+                            <span key={chip.key} class="slds-badge audit-chip">
+                                <lightning-icon icon-name={chip.icon} size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                {chip.label}
+                            </span>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Clean Audit Banner -->
+            <template lwc:if={auditIsClean}>
+                <div class="slds-card slds-p-around_medium slds-m-bottom_medium audit-clean-banner">
+                    <div class="slds-grid slds-grid_vertical-align-center">
+                        <lightning-icon icon-name="utility:success" variant="success" size="small" class="slds-m-right_small"></lightning-icon>
+                        <div>
+                            <h3 class="slds-text-heading_small" style="color: #2e844a;">Clean Audit</h3>
+                            <p class="slds-text-body_small slds-text-color_weak">No warnings or anti-patterns detected. This flow follows best practices.</p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Critical Warnings -->
+            <template lwc:if={hasAuditCriticalWarnings}>
+                <div class="slds-card slds-p-around_medium slds-m-bottom_medium">
+                    <h3 class="slds-text-title_bold slds-text-color_error slds-m-bottom_small">
+                        <lightning-icon icon-name="utility:ban" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                        Critical Warnings
+                    </h3>
+                    <template for:each={auditCriticalWarnings} for:item="warning">
+                        <div key={warning.key} class="audit-warning-card audit-card-critical slds-m-bottom_small">
+                            <div class="slds-grid slds-grid_vertical-align-start">
+                                <lightning-icon icon-name={warning.severityIcon} size="x-small" class="slds-m-right_small audit-icon-critical"></lightning-icon>
+                                <div>
+                                    <p class="slds-text-body_regular"><strong>{warning.rule}</strong></p>
+                                    <p class="slds-text-body_small slds-m-top_xx-small">{warning.message}</p>
+                                    <template lwc:if={warning.element}>
+                                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                                            Element: <code>{warning.element}</code>
+                                        </p>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            <!-- Other Warnings -->
+            <template lwc:if={hasAuditOtherWarnings}>
+                <div class="slds-card slds-p-around_medium slds-m-bottom_medium">
+                    <h3 class="slds-text-title_bold slds-m-bottom_small">
+                        <lightning-icon icon-name="utility:warning" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                        Additional Findings
+                    </h3>
+                    <template for:each={auditOtherWarnings} for:item="warning">
+                        <div key={warning.key} class={warning.severityClass}>
+                            <div class="audit-warning-card slds-m-bottom_small">
+                                <div class="slds-grid slds-grid_vertical-align-start">
+                                    <lightning-icon icon-name={warning.severityIcon} size="x-small" class="slds-m-right_small"></lightning-icon>
+                                    <div>
+                                        <p class="slds-text-body_regular"><strong>{warning.rule}</strong></p>
+                                        <p class="slds-text-body_small slds-m-top_xx-small">{warning.message}</p>
+                                        <template lwc:if={warning.element}>
+                                            <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                                                Element: <code>{warning.element}</code>
+                                            </p>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            <!-- Logic Trace Toggle -->
+            <div class="slds-card slds-p-around_medium slds-m-bottom_medium">
+                <div class="audit-toggle-header" onclick={handleToggleAuditTrace}>
+                    <lightning-icon icon-name={auditTraceIcon} size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                    <span class="slds-text-title_bold">{auditTraceToggleLabel}</span>
+                    <span class="slds-text-body_small slds-text-color_weak slds-m-left_small">— Semantic meaning of each execution step</span>
+                </div>
+                <template lwc:if={showAuditTrace}>
+                    <div class="slds-m-top_small audit-trace-container">
+                        <table class="audit-trace-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 55px;">Step</th>
+                                    <th style="width: 40%;">Meaning</th>
+                                    <th>Impact</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={auditResult.trace} for:item="step">
+                                    <tr key={step.key} class={step.categoryClass}>
+                                        <td class="audit-trace-step-cell">
+                                            {step.stepLabel}
+                                        </td>
+                                        <td class="audit-trace-meaning-cell">{step.meaning}</td>
+                                        <td class="audit-trace-impact-cell">
+                                            <template lwc:if={step.hasImpact}>
+                                                <template for:each={step.impactSegments} for:item="seg">
+                                                    <template lwc:if={seg.isBold}>
+                                                        <strong key={seg.key} class="audit-impact-keyword">{seg.text}</strong>
+                                                    </template>
+                                                    <template lwc:else>
+                                                        <span key={seg.key}>{seg.text}</span>
+                                                    </template>
+                                                </template>
+                                            </template>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Sovereign Flowchart Toggle (Pure SVG — Zero Dependencies) -->
+            <div class="slds-card slds-p-around_medium slds-m-bottom_medium">
+                <div class="audit-toggle-header" onclick={handleToggleAuditFlowchart}>
+                    <lightning-icon icon-name={auditFlowchartIcon} size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                    <span class="slds-text-title_bold">{auditFlowchartToggleLabel}</span>
+                    <span class="slds-text-body_small slds-text-color_weak slds-m-left_small">— Sovereign Flowchart (native SVG, no external libraries)</span>
+                </div>
+                <template lwc:if={showAuditFlowchart}>
+                    <!-- Zoom Controls + Actions -->
+                    <div class="slds-m-top_small slds-m-bottom_small slds-grid slds-grid_vertical-align-center slds-grid_align-spread">
+                        <div class="slds-grid slds-grid_vertical-align-center slds-wrap">
+                            <label class="slds-text-body_small slds-text-color_weak slds-m-right_small">Zoom</label>
+                            <input type="range" min="50" max="200" value="100" step="10"
+                                   class="audit-zoom-slider" oninput={handleFlowchartZoom} />
+                            <span class="slds-text-body_small slds-text-color_weak slds-m-left_small">{flowchartZoomLabel}</span>
+                        </div>
+                        <div class="slds-grid slds-grid_vertical-align-center">
+                            <lightning-button
+                                variant="neutral"
+                                label="Download Flowchart"
+                                icon-name="utility:download"
+                                onclick={handleFlowchartDownloadHtml}>
+                            </lightning-button>
+                        </div>
+                    </div>
+                    <div class="audit-flowchart-wrapper">
+                        <div class="audit-flowchart-scaler" style={flowchartScaleStyle}>
+                            <div class="audit-flowchart-container" lwc:dom="manual"></div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+        </template>
     </template>
 </template>

@@ -37,6 +37,9 @@ import generatePermSetPatch from '@salesforce/apex/FlowHealthController.generate
 // Sprint 8: Metadata Dependency Validator
 import validatePermSetDependencies from '@salesforce/apex/FlowHealthController.validatePermSetDependencies';
 
+// Sprint 8: Sanity Engine — Deterministic Logic Hashing (client-side)
+import { SanityEngine } from './sanityEngine';
+
 // Process type labels (shared between single + bulk views)
 const PROCESS_TYPE_LABELS = {
     'AutoLaunchedFlow': 'Autolaunched',
@@ -183,6 +186,19 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
     @track validationResult = null;        // FH_MetadataValidator.ValidationReport
     @track validationLoading = false;
     @track validationError = null;
+
+    // =========================================================================
+    // SPRINT 8: SANITY ENGINE — LOGIC AUDIT STATE
+    // =========================================================================
+
+    @track auditXml = '';                  // Pasted Flow XML for audit
+    @track auditResult = null;             // SanityEngine analysis result
+    @track auditError = null;
+    @track auditFileName = 'No file chosen';
+    @track auditStripNamespaces = false;   // Rule 8 toggle
+    @track showAuditFlowchart = false;     // Sovereign Flowchart toggle
+    @track showAuditTrace = false;         // Logic trace toggle
+    @track flowchartZoom = 100;            // Zoom percentage (50-200)
 
     // =========================================================================
     // VIEW TOGGLE HANDLERS
@@ -1110,6 +1126,7 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
     get isBulkView() { return this.viewMode === 'bulk'; }
     get isSettingsView() { return this.viewMode === 'settings'; }
     get isPermsetView() { return this.viewMode === 'permset'; }
+    get isAuditView() { return this.viewMode === 'audit'; }
 
     get singleToggleClass() {
         return this.viewMode === 'single'
@@ -1131,6 +1148,12 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
 
     get permsetToggleClass() {
         return this.viewMode === 'permset'
+            ? 'slds-button view-toggle-btn view-toggle-btn-active'
+            : 'slds-button view-toggle-btn';
+    }
+
+    get auditToggleClass() {
+        return this.viewMode === 'audit'
             ? 'slds-button view-toggle-btn view-toggle-btn-active'
             : 'slds-button view-toggle-btn';
     }
@@ -2415,6 +2438,276 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
                 this.validationError = this.extractError(error);
                 this.validationLoading = false;
             });
+    }
+
+    // =========================================================================
+    // SPRINT 8: SANITY ENGINE — LOGIC AUDIT HANDLERS
+    // =========================================================================
+
+    handleAuditXmlChange(event) {
+        this.auditXml = event.target.value;
+        this.auditResult = null;
+        this.auditError = null;
+    }
+
+    handleAuditFileChoose() {
+        const fileInput = this.template.querySelector('[data-id="auditFileInput"]');
+        if (fileInput) {
+            fileInput.click();
+        }
+    }
+
+    handleAuditFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        this.auditFileName = file.name;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            this.auditXml = e.target.result;
+            this.auditResult = null;
+            this.auditError = null;
+        };
+        reader.readAsText(file);
+    }
+
+    handleAuditNamespaceToggle(event) {
+        this.auditStripNamespaces = event.target.checked;
+    }
+
+    handleRunLogicAudit() {
+        if (!this.auditXml || !this.auditXml.trim()) return;
+
+        this.auditError = null;
+        this.auditResult = null;
+        this.showAuditFlowchart = false;
+        this.showAuditTrace = false;
+
+        try {
+            const engine = new SanityEngine({
+                stripNamespaces: this.auditStripNamespaces
+            });
+            const result = engine.analyzeFlow(this.auditXml);
+            if (!result.success) {
+                this.auditError = result.warnings.length > 0
+                    ? result.warnings[0].message
+                    : 'Unknown analysis error.';
+                return;
+            }
+            this.auditResult = this._enrichAuditResult(result);
+        } catch (err) {
+            this.auditError = 'Engine Error: ' + (err.message || 'Unknown error during analysis.');
+        }
+    }
+
+    handleAuditReset() {
+        this.auditXml = '';
+        this.auditResult = null;
+        this.auditError = null;
+        this.showAuditFlowchart = false;
+        this.showAuditTrace = false;
+        this.flowchartZoom = 100;
+        // Force-clear textarea
+        const ta = this.template.querySelector('.audit-xml-textarea');
+        if (ta) ta.value = '';
+        // Clear file input
+        const fi = this.template.querySelector('.audit-file-input');
+        if (fi) fi.value = '';
+    }
+
+    handleToggleAuditFlowchart() {
+        this.showAuditFlowchart = !this.showAuditFlowchart;
+        if (this.showAuditFlowchart) {
+            // eslint-disable-next-line @lwc/lwc/no-async-operation
+            setTimeout(() => this._injectFlowchartSvg(), 0);
+        }
+    }
+    handleToggleAuditTrace()   { this.showAuditTrace = !this.showAuditTrace; }
+
+    /**
+     * Inject the Sovereign Flowchart SVG into the lwc:dom="manual" container.
+     * LWC prevents innerHTML on template-managed elements, so we use a
+     * manually-managed div to hold the raw SVG markup.
+     */
+    _injectFlowchartSvg() {
+        const container = this.template.querySelector('.audit-flowchart-container');
+        if (container && this.auditResult && this.auditResult.flowchartSvg) {
+            container.innerHTML = this.auditResult.flowchartSvg;
+            const svgEl = container.querySelector('svg');
+            if (svgEl) {
+                svgEl.setAttribute('width', '100%');
+                svgEl.setAttribute('height', 'auto');
+                svgEl.style.display = 'block';
+                svgEl.style.margin = '0 auto';
+                // Hide Legend in inline view — it is only shown in the downloaded file
+                const legendGroup = svgEl.querySelector('[data-legend="true"]');
+                if (legendGroup) {
+                    legendGroup.style.display = 'none';
+                }
+            }
+        }
+    }
+
+    handleFlowchartZoom(event) {
+        this.flowchartZoom = parseInt(event.target.value, 10);
+    }
+
+    get flowchartZoomLabel() { return this.flowchartZoom + '%'; }
+
+    get flowchartScaleStyle() {
+        const s = this.flowchartZoom / 100;
+        return 'transform: scale(' + s + '); transform-origin: top center;';
+    }
+
+    /**
+     * Download the flowchart as a self-contained HTML page.
+     *
+     * Lightning Locker blocks: Blob URLs, data:text/html navigation, and document.write().
+     * So instead of "Open in New Tab", we download a .html file the user can open locally.
+     * Uses base64 data URI (same proven pattern as Download SVG).
+     */
+    handleFlowchartDownloadHtml() {
+        if (!this.auditResult || !this.auditResult.flowchartSvg) return;
+        try {
+            const html = '<!DOCTYPE html><html><head><meta charset="utf-8"/>' +
+                         '<title>Sovereign Flowchart \u2014 Logic Audit</title>' +
+                         '<style>body{margin:0;background:#0f1923;display:flex;justify-content:center;' +
+                         'padding:24px;min-height:100vh;}svg{max-width:100%;height:auto;}</style></head>' +
+                         '<body>' + this.auditResult.flowchartSvg + '</body></html>';
+            const dataUri = 'data:text/html;base64,' + btoa(unescape(encodeURIComponent(html)));
+            const link = this.template.querySelector('[data-id="downloadLink"]');
+            if (link) {
+                link.href = dataUri;
+                link.download = 'logic-flowchart.html';
+                link.removeAttribute('target');
+                link.click();
+            }
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error('[FlowHealth] Download HTML failed:', err);
+        }
+    }
+
+
+    get auditFlowchartToggleLabel() { return this.showAuditFlowchart ? 'Hide Flowchart' : 'View Flowchart'; }
+    get auditTraceToggleLabel()   { return this.showAuditTrace ? 'Hide Logic Trace' : 'View Logic Trace'; }
+    get auditFlowchartIcon() { return this.showAuditFlowchart ? 'utility:chevrondown' : 'utility:chevronright'; }
+    get auditTraceIcon()   { return this.showAuditTrace ? 'utility:chevrondown' : 'utility:chevronright'; }
+
+    get hasAuditXml()    { return this.auditXml && this.auditXml.trim().length > 0; }
+    get hasAuditResult() { return this.auditResult !== null; }
+    get hasAuditError()  { return this.auditError !== null; }
+    get auditRunDisabled() { return !this.hasAuditXml; }
+
+    get auditCriticalWarnings() {
+        if (!this.auditResult) return [];
+        return this.auditResult.warnings.filter(w => w.severity === 'Critical');
+    }
+    get auditOtherWarnings() {
+        if (!this.auditResult) return [];
+        return this.auditResult.warnings.filter(w => w.severity !== 'Critical');
+    }
+    get hasAuditCriticalWarnings() { return this.auditCriticalWarnings.length > 0; }
+    get hasAuditOtherWarnings() { return this.auditOtherWarnings.length > 0; }
+    get auditIsClean() {
+        return this.auditResult && this.auditResult.warnings.length === 0;
+    }
+
+    _enrichAuditResult(result) {
+        // Add display keys and severity classes for the template
+        const warnings = result.warnings.map((w, idx) => ({
+            ...w,
+            key: 'aw_' + idx,
+            severityClass: w.severity === 'Critical' ? 'audit-card-critical'
+                         : w.severity === 'High'     ? 'audit-card-high'
+                         : w.severity === 'Medium'    ? 'audit-card-medium'
+                         : 'audit-card-low',
+            severityIcon: w.severity === 'Critical' ? 'utility:ban'
+                        : w.severity === 'High'     ? 'utility:warning'
+                        : w.severity === 'Medium'    ? 'utility:info'
+                        : 'utility:info_alt'
+        }));
+
+        // Map trace: engine returns { step, token, elementName, explanation, impact, category }
+        // Template expects { step, token, meaning, impact, category, categoryClass }
+        const categoryClassMap = {
+            start: 'audit-trace-cat-start',
+            logic: 'audit-trace-cat-logic',
+            data:  'audit-trace-cat-data',
+            loop:  'audit-trace-cat-loop',
+            action:'audit-trace-cat-action',
+            ui:    'audit-trace-cat-ui',
+            error: 'audit-trace-cat-error'
+        };
+        // Keywords to bold in the Impact column for emphasis
+        const IMPACT_KEYWORDS = [
+            'governor limit', 'governor limits', 'DML', 'SOQL',
+            'bulkification', 'bulk data', 'security risk',
+            'transaction', 'rolls back', 'rollback', 'data loss',
+            'black box', 'uncatchable', 'loop', 'amplif',
+            'production', 'irreversible', 'critical', 'violation',
+            'breach', 'time bomb', '100-query'
+        ];
+        const boldKeywordRegex = new RegExp(
+            '(' + IMPACT_KEYWORDS.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')',
+            'gi'
+        );
+
+        const trace = result.trace.map((t, idx) => {
+            const rawImpact = t.impact || '';
+            // Split impact text into segments: alternating plain/bold
+            let impactSegments = [];
+            if (rawImpact) {
+                const parts = rawImpact.split(boldKeywordRegex);
+                impactSegments = parts.filter(p => p.length > 0).map((p, si) => ({
+                    key: 'is_' + idx + '_' + si,
+                    text: p,
+                    isBold: boldKeywordRegex.test(p)
+                }));
+                // Reset regex lastIndex after each use
+                boldKeywordRegex.lastIndex = 0;
+            }
+            return {
+                ...t,
+                key: 'at_' + idx,
+                stepLabel: 'Step ' + t.step,
+                meaning: t.explanation || ('Element: ' + (t.elementName || t.token)),
+                impact: rawImpact,
+                impactSegments: impactSegments,
+                hasImpact: !!rawImpact,
+                categoryClass: categoryClassMap[t.category] || 'audit-trace-cat-action'
+            };
+        });
+
+        // Build summary chips
+        const s = result.elementSummary;
+        const chips = [];
+        if (s.decisions)    chips.push({ key: 'c_dec', label: s.decisions + ' Decision' + (s.decisions > 1 ? 's' : ''), icon: 'utility:routing_offline' });
+        if (s.dmlWrites)    chips.push({ key: 'c_dmw', label: s.dmlWrites + ' DML Write' + (s.dmlWrites > 1 ? 's' : ''), icon: 'utility:edit' });
+        if (s.dmlDeletes)   chips.push({ key: 'c_dmd', label: s.dmlDeletes + ' DML Delete' + (s.dmlDeletes > 1 ? 's' : ''), icon: 'utility:delete' });
+        if (s.queries)      chips.push({ key: 'c_soq', label: s.queries + ' SOQL Quer' + (s.queries > 1 ? 'ies' : 'y'), icon: 'utility:search' });
+        if (s.loops)        chips.push({ key: 'c_lop', label: s.loops + ' Loop' + (s.loops > 1 ? 's' : ''), icon: 'utility:refresh' });
+        if (s.screens)      chips.push({ key: 'c_scr', label: s.screens + ' Screen' + (s.screens > 1 ? 's' : ''), icon: 'utility:desktop' });
+        if (s.actions)      chips.push({ key: 'c_act', label: s.actions + ' Action' + (s.actions > 1 ? 's' : ''), icon: 'utility:apex' });
+        if (s.subflows)     chips.push({ key: 'c_sub', label: s.subflows + ' Subflow' + (s.subflows > 1 ? 's' : ''), icon: 'utility:flow' });
+        if (s.assignments)  chips.push({ key: 'c_asg', label: s.assignments + ' Assignment' + (s.assignments > 1 ? 's' : ''), icon: 'utility:assignment' });
+        if (s.unknowns)     chips.push({ key: 'c_unk', label: s.unknowns + ' Unknown' + (s.unknowns > 1 ? 's' : ''), icon: 'utility:question_mark' });
+
+        // Join token array into a readable fingerprint string for display
+        // result.tokens is string[] from analyzeFlow()
+        const tokensDisplay = Array.isArray(result.tokens)
+            ? result.tokens.join(' -> ')
+            : (result.tokens || '');
+
+        return {
+            ...result,
+            warnings,
+            trace,
+            chips,
+            hasChips: chips.length > 0,
+            tokens: tokensDisplay,
+            hashDisplay: result.hash || '(empty)',
+            processingLabel: result.stats.processingTimeMs + 'ms — ' + result.stats.totalElements + ' elements, ' + result.stats.noiseStripped + ' noise tags stripped'
+        };
     }
 
     // =========================================================================
