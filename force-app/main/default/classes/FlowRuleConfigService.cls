@@ -92,18 +92,14 @@ public with sharing class FlowRuleConfigService {
         try {
             String query = 'SELECT Id, Status FROM DeployRequest '
                          + 'WHERE Id = \'' + String.escapeSingleQuotes(jobId) + '\'';
-            HttpRequest req = new HttpRequest();
-            req.setEndpoint('callout:FlowHealth_SelfOrg/services/data/v62.0/tooling/query'
-                + '?q=' + EncodingUtil.urlEncode(query, 'UTF-8'));
-            req.setMethod('GET');
-            req.setHeader('Content-Type', 'application/json');
-            req.setTimeout(15000);
-
-            HttpResponse res = new Http().send(req);
-            if (res.getStatusCode() != 200) return 'Unknown';
+            // Shared connection layer: zero-setup session mode by default,
+            // Named Credential when hardened mode is enabled.
+            String responseBody = FlowMetadataService.toolingGet(
+                '/services/data/v62.0/tooling/query?q=' + EncodingUtil.urlEncode(query, 'UTF-8')
+            );
 
             Map<String, Object> body =
-                (Map<String, Object>) JSON.deserializeUntyped(res.getBody());
+                (Map<String, Object>) JSON.deserializeUntyped(responseBody);
             List<Object> records = (List<Object>) body.get('records');
             if (records == null || records.isEmpty()) return 'Unknown';
 

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customSettingsType>Hierarchy</customSettingsType>
+    <description>Flow Health app configuration. Controls the org connection mode: zero-setup (default) or Named Credential hardened mode.</description>
+    <enableFeeds>false</enableFeeds>
+    <label>Flow Health Settings</label>
+    <visibility>Public</visibility>
+</CustomObject>

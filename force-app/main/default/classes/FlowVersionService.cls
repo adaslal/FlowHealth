@@ -112,26 +112,12 @@ public with sharing class FlowVersionService {
 
     @TestVisible
     private static String executeToolingQuery(String query) {
-        String endpoint = 'callout:' + NAMED_CREDENTIAL
-                        + '/services/data/' + API_VERSION + '/tooling/query'
-                        + '?q=' + EncodingUtil.urlEncode(query, 'UTF-8');
-
-        HttpRequest req = new HttpRequest();
-        req.setEndpoint(endpoint);
-        req.setMethod('GET');
-        req.setHeader('Content-Type', 'application/json');
-        req.setTimeout(30000);
-
-        Http http = new Http();
-        HttpResponse res = http.send(req);
-
-        if (res.getStatusCode() != 200) {
-            throw new FlowMetadataService.FlowHealthException(
-                'Tooling API error (HTTP ' + res.getStatusCode() + '): ' + res.getBody()
-            );
-        }
-
-        return res.getBody();
+        // Delegates to the shared connection layer (zero-setup session mode
+        // by default, Named Credential when hardened mode is enabled).
+        return FlowMetadataService.toolingGet(
+            '/services/data/' + API_VERSION + '/tooling/query'
+            + '?q=' + EncodingUtil.urlEncode(query, 'UTF-8')
+        );
     }
 
     private static List<FlowVersionInfo> parseVersionList(String responseBody) {

@@ -1,13 +1,27 @@
-# Flow Health - Sprint 1 Setup Guide
+# Flow Health — Setup Guide
 
-## Prerequisites
-- A Salesforce Developer Edition or Scratch Org
-- Salesforce CLI (sf) installed
+## ⚡ Zero-Setup by Default
+
+**Flow Health works immediately after install — no setup required.**
+
+By default the app connects to your org automatically (same-org session via
+the packaged FlowHealthSession page + your org's own domain URL, which needs
+no Remote Site Setting). Install, assign the "Flow Health User" permission
+set, open the Flow Health tab, done.
+
+**Everything below this line is OPTIONAL** — it applies only if you want
+"hardened mode," where all API calls route through an OAuth Named Credential
+instead. Enable it afterwards via the "Use Named Credential (hardened mode)"
+checkbox in the app's Settings tab.
+
+---
+
+## Prerequisites (hardened mode only)
 - My Domain enabled (required for Named Credentials)
 
-## Step 1: Create the SFDX Project
+## Step 1: Create the SFDX Project (developers only)
 
-If you haven't already, clone or copy this project folder. Then authorize your org:
+If you're deploying from source rather than installing a package, authorize your org:
 
 ```bash
 # Authorize your dev org
@@ -17,11 +31,10 @@ sf org login web --alias flowhealth-dev
 sf config set target-org flowhealth-dev
 ```
 
-## Step 2: Set Up the Named Credential (Manual - Required)
+## Step 2: Set Up the Named Credential (OPTIONAL — Hardened Mode)
 
-The app calls the Tooling API to fetch Flow metadata. In Lightning context,
-`UserInfo.getSessionId()` returns INVALID_SESSION_ID, so we use a Named
-Credential with OAuth to authenticate.
+In hardened mode the app calls the Tooling API through a Named Credential
+with OAuth instead of the automatic same-org session.
 
 ### 2a: Create an External Client App
 

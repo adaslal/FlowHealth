@@ -94,6 +94,36 @@ public with sharing class FlowHealthController {
     }
 
     // =========================================================================
+    // CONNECTION MODE (zero-setup vs Named Credential hardened mode)
+    // =========================================================================
+
+    /**
+     * Returns whether hardened (Named Credential) mode is enabled.
+     */
+    @AuraEnabled
+    public static Boolean getUseNamedCredential() {
+        try {
+            return FlowMetadataService.useNamedCredential();
+        } catch (Exception e) {
+            throw uiError('Unable to read connection settings. Error: ' + e.getMessage());
+        }
+    }
+
+    /**
+     * Enables/disables hardened (Named Credential) mode org-wide.
+     */
+    @AuraEnabled
+    public static void setUseNamedCredential(Boolean enabled) {
+        try {
+            Flow_Health_Settings__c settings = Flow_Health_Settings__c.getOrgDefaults();
+            settings.Use_Named_Credential__c = enabled == true;
+            upsert settings;
+        } catch (Exception e) {
+            throw uiError('Unable to save connection settings. Error: ' + e.getMessage());
+        }
+    }
+
+    // =========================================================================
     // SPRINT 2: FLOW ANALYSIS (Health Score + Findings)
     // =========================================================================
 

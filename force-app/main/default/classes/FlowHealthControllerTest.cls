@@ -253,6 +253,33 @@ private class FlowHealthControllerTest {
     }
 
     // =========================================================================
+    // TESTS: Connection mode (zero-setup vs Named Credential)
+    // =========================================================================
+
+    @IsTest
+    static void testConnectionMode_DefaultsToZeroSetup() {
+        Test.startTest();
+        Boolean hardened = FlowHealthController.getUseNamedCredential();
+        Test.stopTest();
+
+        System.assertEquals(false, hardened,
+            'Fresh org should default to zero-setup mode (no Named Credential)');
+    }
+
+    @IsTest
+    static void testConnectionMode_EnableAndDisable() {
+        Test.startTest();
+        FlowHealthController.setUseNamedCredential(true);
+        System.assertEquals(true, FlowHealthController.getUseNamedCredential(),
+            'Hardened mode should be enabled after save');
+
+        FlowHealthController.setUseNamedCredential(false);
+        System.assertEquals(false, FlowHealthController.getUseNamedCredential(),
+            'Hardened mode should be disabled after save');
+        Test.stopTest();
+    }
+
+    // =========================================================================
     // TESTS: getFlowMetadataJson (Logic Audit — load from org)
     // =========================================================================
 

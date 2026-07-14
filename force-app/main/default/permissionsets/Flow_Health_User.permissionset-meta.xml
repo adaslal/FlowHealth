@@ -204,6 +204,14 @@
         <apexPage>FlowHealthReport</apexPage>
         <enabled>true</enabled>
     </pageAccesses>
+    <pageAccesses>
+        <apexPage>FlowHealthSession</apexPage>
+        <enabled>true</enabled>
+    </pageAccesses>
+    <userPermissions>
+        <enabled>true</enabled>
+        <name>ViewSetup</name>
+    </userPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>Flow Health User</label>
     <tabSettings>

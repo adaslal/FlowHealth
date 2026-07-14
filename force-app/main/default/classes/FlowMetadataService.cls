@@ -122,38 +122,114 @@ public with sharing class FlowMetadataService {
     // =========================================================================
 
     /**
-     * Executes a Tooling API query via Named Credential.
+     * Executes a Tooling API query using the active connection mode.
      *
      * @param query  The SOQL query string for the Tooling API
      * @return String  The raw JSON response body
      */
     @TestVisible
     private static String executeToolingQuery(String query) {
-        // Build the endpoint URL
-        // callout:NamedCredential maps to the org's My Domain URL
-        String endpoint = 'callout:' + NAMED_CREDENTIAL
-                        + '/services/data/' + API_VERSION + '/tooling/query'
-                        + '?q=' + EncodingUtil.urlEncode(query, 'UTF-8');
+        return toolingGet(
+            '/services/data/' + API_VERSION + '/tooling/query'
+            + '?q=' + EncodingUtil.urlEncode(query, 'UTF-8')
+        );
+    }
 
-        // Build the HTTP request
+    // =========================================================================
+    // CONNECTION LAYER — Zero-setup by default, Named Credential optional
+    // =========================================================================
+    //
+    // ZERO-SETUP MODE (default): the app calls its own org's Tooling API at
+    // URL.getOrgDomainUrl() — which requires NO Remote Site Setting — using
+    // an API-enabled session obtained from the FlowHealthSession Visualforce
+    // page. Install → works. Nothing to configure.
+    //
+    // HARDENED MODE (optional): admins who prefer OAuth can complete the
+    // SETUP_GUIDE steps and check "Use Named Credential" in Flow Health
+    // Settings. All callouts then route through callout:FlowHealth_SelfOrg.
+    // =========================================================================
+
+    /** Per-transaction cache of the API session id. */
+    private static String cachedSessionId;
+
+    /**
+     * True when the org has opted into Named Credential (hardened) mode.
+     */
+    public static Boolean useNamedCredential() {
+        Flow_Health_Settings__c settings = Flow_Health_Settings__c.getInstance();
+        return settings != null && settings.Use_Named_Credential__c == true;
+    }
+
+    /**
+     * Executes a GET against this org's APIs using the active connection
+     * mode. Shared by FlowMetadataService, FlowVersionService, and
+     * FlowRuleConfigService so the strategy lives in exactly one place.
+     *
+     * @param relativePath  Path starting with '/services/...'
+     * @return Raw response body
+     */
+    public static String toolingGet(String relativePath) {
         HttpRequest req = new HttpRequest();
-        req.setEndpoint(endpoint);
         req.setMethod('GET');
         req.setHeader('Content-Type', 'application/json');
-        req.setTimeout(30000); // 30 second timeout for large flows
+        req.setTimeout(30000);
 
-        // Execute
-        Http http = new Http();
-        HttpResponse res = http.send(req);
+        if (useNamedCredential()) {
+            req.setEndpoint('callout:' + NAMED_CREDENTIAL + relativePath);
+        } else {
+            req.setEndpoint(URL.getOrgDomainUrl().toExternalForm() + relativePath);
+            req.setHeader('Authorization', 'Bearer ' + getApiSessionId());
+        }
 
-        // Check response status
+        HttpResponse res = new Http().send(req);
+
         if (res.getStatusCode() != 200) {
             throw new FlowHealthException(
                 'Tooling API error (HTTP ' + res.getStatusCode() + '): ' + res.getBody()
             );
         }
-
         return res.getBody();
+    }
+
+    /**
+     * Returns an API-enabled session id for same-org calls.
+     *
+     * In Lightning context UserInfo.getSessionId() is not API-enabled, so we
+     * read the session from the FlowHealthSession Visualforce page (VF
+     * sessions are API-enabled). This is the established pattern used by
+     * admin tools for same-org API access without OAuth setup. The session
+     * is only ever used against this org's own domain and is never stored
+     * or transmitted anywhere else.
+     */
+    @TestVisible
+    private static String getApiSessionId() {
+        if (cachedSessionId != null) {
+            return cachedSessionId;
+        }
+        if (Test.isRunningTest()) {
+            // getContent() is not supported in tests; callouts are mocked anyway.
+            cachedSessionId = UserInfo.getSessionId();
+            return cachedSessionId;
+        }
+        try {
+            String content = Page.FlowHealthSession.getContent().toString();
+            Integer startIdx = content.indexOf('FH_SID_START') + 'FH_SID_START'.length();
+            Integer endIdx = content.indexOf('FH_SID_END');
+            String sid = content.substring(startIdx, endIdx).trim();
+            if (String.isBlank(sid)) {
+                throw new FlowHealthException('Empty session id.');
+            }
+            cachedSessionId = sid;
+            return cachedSessionId;
+        } catch (Exception e) {
+            throw new FlowHealthException(
+                'Unable to establish the org connection automatically. ' +
+                'You can enable hardened mode instead: complete the Named ' +
+                'Credential setup in SETUP_GUIDE.md, then check "Use Named ' +
+                'Credential" in Setup → Custom Settings → Flow Health Settings. ' +
+                '(Detail: ' + e.getMessage() + ')'
+            );
+        }
     }
 
     /**

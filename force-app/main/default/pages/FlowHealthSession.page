@@ -1,0 +1,1 @@
+<apex:page contentType="text/plain" showHeader="false" sidebar="false" applyHtmlTag="false" applyBodyTag="false" standardStylesheets="false" cache="false">FH_SID_START{!$Api.Session_Id}FH_SID_END</apex:page>

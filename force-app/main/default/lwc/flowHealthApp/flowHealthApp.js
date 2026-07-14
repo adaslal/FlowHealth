@@ -38,6 +38,9 @@ import generatePermSetPatch from '@salesforce/apex/FlowHealthController.generate
 import validatePermSetDependencies from '@salesforce/apex/FlowHealthController.validatePermSetDependencies';
 // Sprint 9: Logic Audit — load flow directly from org
 import getFlowMetadataJson from '@salesforce/apex/FlowHealthController.getFlowMetadataJson';
+// Sprint 9: Connection mode (zero-setup vs Named Credential)
+import getUseNamedCredential from '@salesforce/apex/FlowHealthController.getUseNamedCredential';
+import setUseNamedCredential from '@salesforce/apex/FlowHealthController.setUseNamedCredential';
 
 // Sprint 8: Sanity Engine — Deterministic Logic Hashing (client-side)
 import { SanityEngine } from './sanityEngine';
@@ -131,6 +134,10 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
     @track ruleConfigsSaved = false;
     @track ruleConfigError = null;
     @track ruleConfigsInfo = null;
+    // Connection mode (Sprint 9)
+    @track useNamedCredential = false;
+    @track connectionModeLoaded = false;
+    @track connectionModeSaving = false;
     @track ruleDeployJobId = null;
     @track modifiedRules = {}; // key: developerName, value: changed fields
 
@@ -229,9 +236,46 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
         if (view === 'settings' && !this.customRulesLoaded) {
             this.loadCustomRules();
         }
+        if (view === 'settings' && !this.connectionModeLoaded) {
+            this.loadConnectionMode();
+        }
         if (view === 'audit' && !this.auditFlowsLoaded) {
             this.loadAuditFlowList();
         }
+    }
+
+    // =========================================================================
+    // CONNECTION MODE (Sprint 9 — zero-setup vs Named Credential)
+    // =========================================================================
+
+    loadConnectionMode() {
+        getUseNamedCredential()
+            .then(result => {
+                this.useNamedCredential = result === true;
+                this.connectionModeLoaded = true;
+            })
+            .catch(() => {
+                this.connectionModeLoaded = true;
+            });
+    }
+
+    get connectionModeDisabled() {
+        return this.connectionModeSaving;
+    }
+
+    handleToggleConnectionMode(event) {
+        const enabled = event.target.checked;
+        this.connectionModeSaving = true;
+        setUseNamedCredential({ enabled: enabled })
+            .then(() => {
+                this.useNamedCredential = enabled;
+                this.connectionModeSaving = false;
+            })
+            .catch(error => {
+                this.ruleConfigError = this.extractError(error);
+                this.connectionModeSaving = false;
+                this.loadConnectionMode(); // reset checkbox to real state
+            });
     }
 
     handleBackToDashboard() {

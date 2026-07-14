@@ -876,6 +876,22 @@
                 </p>
             </div>
 
+            <!-- Connection mode (zero-setup vs Named Credential) -->
+            <div class="slds-box slds-box_x-small slds-m-bottom_medium">
+                <lightning-input
+                    type="checkbox"
+                    label="Use Named Credential (hardened mode)"
+                    checked={useNamedCredential}
+                    onchange={handleToggleConnectionMode}
+                    disabled={connectionModeDisabled}
+                ></lightning-input>
+                <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                    Off (default): Flow Health connects to this org automatically — no setup needed.
+                    On: all API calls route through the FlowHealth_SelfOrg Named Credential,
+                    which requires the OAuth setup described in the setup guide.
+                </p>
+            </div>
+
             <!-- Action buttons -->
             <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_medium">
                 <lightning-button
