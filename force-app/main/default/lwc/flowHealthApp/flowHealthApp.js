@@ -36,6 +36,8 @@ import compareFlowVersions from '@salesforce/apex/FlowHealthController.compareFl
 import generatePermSetPatch from '@salesforce/apex/FlowHealthController.generatePermSetPatch';
 // Sprint 8: Metadata Dependency Validator
 import validatePermSetDependencies from '@salesforce/apex/FlowHealthController.validatePermSetDependencies';
+// Sprint 9: Logic Audit — load flow directly from org
+import getFlowMetadataJson from '@salesforce/apex/FlowHealthController.getFlowMetadataJson';
 
 // Sprint 8: Sanity Engine — Deterministic Logic Hashing (client-side)
 import { SanityEngine } from './sanityEngine';
@@ -196,6 +198,13 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
     @track auditResult = null;             // SanityEngine analysis result
     @track auditError = null;
     @track auditFileName = 'No file chosen';
+    // Load-from-org state (Sprint 9)
+    @track auditFlowsList = [];
+    @track auditFlowsLoaded = false;
+    @track auditSelectedFlow = '';
+    @track auditLoadingFromOrg = false;
+    // Input mode: 'org' (select from org, default) or 'xml' (paste/upload)
+    @track auditInputMode = 'org';
     @track auditStripNamespaces = false;   // Rule 8 toggle
     @track showAuditFlowchart = false;     // Sovereign Flowchart toggle
     @track showAuditTrace = false;         // Logic trace toggle
@@ -219,6 +228,9 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
         }
         if (view === 'settings' && !this.customRulesLoaded) {
             this.loadCustomRules();
+        }
+        if (view === 'audit' && !this.auditFlowsLoaded) {
+            this.loadAuditFlowList();
         }
     }
 
@@ -2502,6 +2514,113 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
     // SPRINT 8: SANITY ENGINE — LOGIC AUDIT HANDLERS
     // =========================================================================
 
+    // -------------------------------------------------------------------------
+    // Input mode selector (Sprint 9)
+    // -------------------------------------------------------------------------
+
+    get auditModeOptions() {
+        return [
+            { label: 'Select a flow from this org', value: 'org' },
+            { label: 'Paste or upload Flow XML', value: 'xml' }
+        ];
+    }
+
+    get isAuditOrgMode() { return this.auditInputMode === 'org'; }
+    get isAuditXmlMode() { return this.auditInputMode === 'xml'; }
+
+    handleAuditModeChange(event) {
+        this.auditInputMode = event.detail.value;
+        this.auditResult = null;
+        this.auditError = null;
+    }
+
+    // -------------------------------------------------------------------------
+    // Load flow directly from the org (Sprint 9)
+    // -------------------------------------------------------------------------
+
+    loadAuditFlowList() {
+        getFlowList()
+            .then(result => {
+                this.auditFlowsList = result || [];
+                this.auditFlowsLoaded = true;
+            })
+            .catch(() => {
+                // Selector stays empty — paste/upload mode still works
+                this.auditFlowsLoaded = true;
+            });
+    }
+
+    get auditFlowOptions() {
+        return this.auditFlowsList.map(f => ({
+            label: (f.masterLabel || f.developerName) + ' (' + f.developerName + ')',
+            value: f.developerName
+        }));
+    }
+
+    get hasAuditFlowOptions() {
+        return this.auditFlowsList.length > 0;
+    }
+
+    get auditLoadFromOrgDisabled() {
+        return !this.auditSelectedFlow || this.auditLoadingFromOrg;
+    }
+
+    handleAuditFlowSelect(event) {
+        this.auditSelectedFlow = event.detail.value;
+    }
+
+    /**
+     * Org mode: fetch → convert → analyze, all in memory. The XML is an
+     * internal detail here — it never touches the paste-mode textarea.
+     */
+    handleAuditLoadFromOrg() {
+        if (!this.auditSelectedFlow) return;
+
+        this.auditLoadingFromOrg = true;
+        this.auditError = null;
+        this.auditResult = null;
+
+        getFlowMetadataJson({ flowDeveloperName: this.auditSelectedFlow })
+            .then(metadataJson => {
+                const xml = this._flowJsonToXml(JSON.parse(metadataJson));
+                this.auditLoadingFromOrg = false;
+                this._runAudit(xml);
+            })
+            .catch(error => {
+                this.auditError = this.extractError(error);
+                this.auditLoadingFromOrg = false;
+            });
+    }
+
+    /**
+     * Converts the Tooling API's Metadata JSON into XML the Sanity Engine
+     * can tokenize. JSON property names are identical to the .flow-meta.xml
+     * tag names (recordLookups, decisions, connector, targetReference, ...),
+     * so a generic recursive conversion preserves the logic structure.
+     */
+    _flowJsonToXml(obj) {
+        const esc = s => String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        const nodeToXml = (key, value) => {
+            if (value === null || value === undefined) return '';
+            if (Array.isArray(value)) {
+                return value.map(item => nodeToXml(key, item)).join('');
+            }
+            if (typeof value === 'object') {
+                let inner = '';
+                Object.keys(value).forEach(k => { inner += nodeToXml(k, value[k]); });
+                return '<' + key + '>' + inner + '</' + key + '>';
+            }
+            return '<' + key + '>' + esc(value) + '</' + key + '>';
+        };
+
+        let body = '';
+        Object.keys(obj).forEach(k => { body += nodeToXml(k, obj[k]); });
+        return '<?xml version="1.0" encoding="UTF-8"?>' +
+            '<Flow xmlns="http://soap.sforce.com/2006/04/metadata">' + body + '</Flow>';
+    }
+
     handleAuditXmlChange(event) {
         this.auditXml = event.target.value;
         this.auditResult = null;
@@ -2534,7 +2653,15 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
 
     handleRunLogicAudit() {
         if (!this.auditXml || !this.auditXml.trim()) return;
+        this._runAudit(this.auditXml);
+    }
 
+    /**
+     * Shared audit pipeline — used by both input modes.
+     * XML mode passes the textarea content; org mode passes XML converted
+     * in memory from the Tooling API metadata.
+     */
+    _runAudit(xmlString) {
         this.auditError = null;
         this.auditResult = null;
         this.showAuditFlowchart = false;
@@ -2544,7 +2671,7 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
             const engine = new SanityEngine({
                 stripNamespaces: this.auditStripNamespaces
             });
-            const result = engine.analyzeFlow(this.auditXml);
+            const result = engine.analyzeFlow(xmlString);
             if (!result.success) {
                 this.auditError = result.warnings.length > 0
                     ? result.warnings[0].message
@@ -2561,6 +2688,8 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
         this.auditXml = '';
         this.auditResult = null;
         this.auditError = null;
+        this.auditSelectedFlow = '';
+        this.auditFileName = 'No file chosen';
         this.showAuditFlowchart = false;
         this.showAuditTrace = false;
         this.flowchartZoom = 100;

@@ -253,6 +253,35 @@ private class FlowHealthControllerTest {
     }
 
     // =========================================================================
+    // TESTS: getFlowMetadataJson (Logic Audit — load from org)
+    // =========================================================================
+
+    @IsTest
+    static void testGetFlowMetadataJson_Success() {
+        Test.setMock(HttpCalloutMock.class, new MockToolingSuccess());
+
+        Test.startTest();
+        String json = FlowHealthController.getFlowMetadataJson('Update_Account_Status');
+        Test.stopTest();
+
+        System.assert(String.isNotBlank(json), 'Should return raw metadata JSON');
+        System.assert(json.contains('"label"'), 'JSON should contain the flow label field');
+    }
+
+    @IsTest
+    static void testGetFlowMetadataJson_BlankName() {
+        Test.startTest();
+        try {
+            FlowHealthController.getFlowMetadataJson('');
+            System.assert(false, 'Should have thrown exception');
+        } catch (AuraHandledException e) {
+            System.assert(e.getMessage().containsIgnoreCase('blank'),
+                'Error should mention blank: ' + e.getMessage());
+        }
+        Test.stopTest();
+    }
+
+    // =========================================================================
     // TEST DATA: Realistic Tooling API JSON responses
     // =========================================================================
 

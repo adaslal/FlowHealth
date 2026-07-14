@@ -73,6 +73,26 @@ public with sharing class FlowHealthController {
         }
     }
 
+    /**
+     * Returns the raw flow metadata as a JSON string for the Logic Audit tab.
+     * The client-side Sanity Engine converts and analyzes it locally.
+     *
+     * @param flowDeveloperName  The API name of the flow
+     * @return Raw JSON string of the flow's Metadata node
+     */
+    @AuraEnabled
+    public static String getFlowMetadataJson(String flowDeveloperName) {
+        try {
+            return FlowMetadataService.getFlowMetadataJson(flowDeveloperName);
+        } catch (FlowMetadataService.FlowHealthException e) {
+            throw uiError(e.getMessage());
+        } catch (Exception e) {
+            throw uiError(
+                'Unable to load flow metadata for "' + flowDeveloperName + '". Error: ' + e.getMessage()
+            );
+        }
+    }
+
     // =========================================================================
     // SPRINT 2: FLOW ANALYSIS (Health Score + Findings)
     // =========================================================================

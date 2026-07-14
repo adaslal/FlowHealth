@@ -74,6 +74,49 @@ public with sharing class FlowMetadataService {
         return parseFlowList(responseBody);
     }
 
+    /**
+     * Returns the RAW metadata of a flow as a JSON string (the Tooling API's
+     * "Metadata" node, untyped and unmodified).
+     *
+     * Used by the Logic Audit tab: the client-side Sanity Engine converts
+     * this JSON to XML-equivalent structure and analyzes it locally, so users
+     * can pick an org flow instead of manually exporting .flow-meta.xml.
+     *
+     * @param flowDeveloperName  The API name of the flow
+     * @return String  Raw JSON of the flow's Metadata node
+     * @throws FlowHealthException  If the flow is not found or has no metadata
+     */
+    public static String getFlowMetadataJson(String flowDeveloperName) {
+        if (String.isBlank(flowDeveloperName)) {
+            throw new FlowHealthException('Flow developer name cannot be blank.');
+        }
+
+        String query = 'SELECT Id, FullName, MasterLabel, Status, Metadata '
+                     + 'FROM Flow '
+                     + 'WHERE Definition.DeveloperName = \'' + String.escapeSingleQuotes(flowDeveloperName) + '\' '
+                     + 'AND Status = \'Active\' '
+                     + 'LIMIT 1';
+
+        String responseBody = executeToolingQuery(query);
+
+        Map<String, Object> parsed = (Map<String, Object>) JSON.deserializeUntyped(responseBody);
+        List<Object> records = (List<Object>) parsed.get('records');
+        if (records == null || records.isEmpty()) {
+            throw new FlowHealthException(
+                'No active flow found with developer name: ' + flowDeveloperName + '.'
+            );
+        }
+
+        Object metadata = ((Map<String, Object>) records[0]).get('Metadata');
+        if (metadata == null) {
+            throw new FlowHealthException(
+                'Flow "' + flowDeveloperName + '" was found but its metadata is empty.'
+            );
+        }
+
+        return JSON.serialize(metadata);
+    }
+
     // =========================================================================
     // PRIVATE HELPERS
     // =========================================================================

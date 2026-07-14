@@ -1925,46 +1925,81 @@
                     Logic Audit — Deterministic Flow Analysis
                 </h2>
                 <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
-                    Paste or upload a Flow XML (.flow-meta.xml) to generate a deterministic Logic Hash — no internet, no AI, pure structural analysis.
+                    Pick a flow from this org, or paste/upload a Flow XML (.flow-meta.xml) — analysis runs locally either way: deterministic Logic Hash, no AI.
                 </p>
             </div>
 
-            <!-- XML Input Area -->
+            <!-- Input mode selector -->
             <div class="slds-m-top_medium">
-                <div class="slds-form-element">
-                    <label class="slds-form-element__label slds-text-title_bold" for="audit-xml-input">
-                        Flow XML
-                    </label>
-                    <div class="slds-form-element__control">
-                        <textarea
-                            class="slds-textarea audit-xml-textarea"
-                            placeholder="Paste your .flow-meta.xml content here..."
-                            rows="8"
-                            oninput={handleAuditXmlChange}></textarea>
+                <lightning-radio-group
+                    name="auditInputMode"
+                    label="Flow source"
+                    options={auditModeOptions}
+                    value={auditInputMode}
+                    onchange={handleAuditModeChange}
+                    type="radio"
+                ></lightning-radio-group>
+            </div>
+
+            <!-- MODE A: Select a flow from this org -->
+            <template lwc:if={isAuditOrgMode}>
+                <div class="slds-m-top_medium">
+                    <div class="slds-grid slds-grid_vertical-align-end slds-wrap slds-gutters_x-small">
+                        <div class="slds-col slds-size_2-of-3">
+                            <lightning-combobox
+                                variant="label-hidden"
+                                placeholder="Select a flow..."
+                                options={auditFlowOptions}
+                                value={auditSelectedFlow}
+                                onchange={handleAuditFlowSelect}
+                                disabled={auditLoadingFromOrg}
+                            ></lightning-combobox>
+                        </div>
+                        <div class="slds-col">
+                            <lightning-button
+                                variant="brand"
+                                label="Audit"
+                                icon-name="utility:play"
+                                onclick={handleAuditLoadFromOrg}
+                                disabled={auditLoadFromOrgDisabled}
+                            ></lightning-button>
+                        </div>
+                        <template lwc:if={auditLoadingFromOrg}>
+                            <div class="slds-col slds-grid slds-grid_vertical-align-center">
+                                <lightning-spinner alternative-text="Loading flow..." size="small"></lightning-spinner>
+                            </div>
+                        </template>
                     </div>
                 </div>
+            </template>
 
-                <!-- File Upload -->
-                <div class="slds-m-top_small slds-grid slds-grid_vertical-align-center slds-wrap">
-                    <div class="slds-col slds-m-right_medium">
-                        <input type="file" accept=".xml,.flow-meta.xml,.flow" class="slds-hide" data-id="auditFileInput" onchange={handleAuditFileUpload} />
-                        <lightning-button variant="neutral" label="Choose File" icon-name="utility:upload" onclick={handleAuditFileChoose}></lightning-button>
-                        <span class="audit-file-name slds-m-left_small slds-text-color_weak">{auditFileName}</span>
+            <!-- MODE B: Paste / upload XML -->
+            <template lwc:if={isAuditXmlMode}>
+                <div class="slds-m-top_medium">
+                    <div class="slds-form-element">
+                        <label class="slds-form-element__label slds-text-title_bold" for="audit-xml-input">
+                            Flow XML
+                        </label>
+                        <div class="slds-form-element__control">
+                            <textarea
+                                class="slds-textarea audit-xml-textarea"
+                                placeholder="Paste your .flow-meta.xml content here..."
+                                rows="8"
+                                oninput={handleAuditXmlChange}></textarea>
+                        </div>
                     </div>
-                    <div class="slds-col">
-                        <lightning-input
-                            type="checkbox"
-                            label="Strip Managed Package Namespaces (Rule 8)"
-                            checked={auditStripNamespaces}
-                            onchange={handleAuditNamespaceToggle}
-                            class="slds-m-top_xx-small">
-                        </lightning-input>
-                    </div>
-                </div>
 
-                <!-- Action Buttons -->
-                <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
-                    <div>
+                    <!-- File Upload -->
+                    <div class="slds-m-top_small slds-grid slds-grid_vertical-align-center slds-wrap">
+                        <div class="slds-col slds-m-right_medium">
+                            <input type="file" accept=".xml,.flow-meta.xml,.flow" class="slds-hide" data-id="auditFileInput" onchange={handleAuditFileUpload} />
+                            <lightning-button variant="neutral" label="Choose File" icon-name="utility:upload" onclick={handleAuditFileChoose}></lightning-button>
+                            <span class="audit-file-name slds-m-left_small slds-text-color_weak">{auditFileName}</span>
+                        </div>
+                    </div>
+
+                    <!-- Run button (org mode audits via its own Audit button) -->
+                    <div class="slds-m-top_medium">
                         <lightning-button
                             variant="brand"
                             label="Run Logic Audit"
@@ -1972,14 +2007,27 @@
                             disabled={auditRunDisabled}
                             onclick={handleRunLogicAudit}>
                         </lightning-button>
-                        <lightning-button
-                            variant="neutral"
-                            label="Reset"
-                            icon-name="utility:refresh"
-                            onclick={handleAuditReset}
-                            class="slds-m-left_small">
-                        </lightning-button>
                     </div>
+                </div>
+            </template>
+
+            <!-- Shared options + Reset (apply to both modes) -->
+            <div class="slds-m-top_medium slds-grid slds-grid_vertical-align-center slds-wrap">
+                <div class="slds-col slds-m-right_medium">
+                    <lightning-input
+                        type="checkbox"
+                        label="Strip Managed Package Namespaces (Rule 8)"
+                        checked={auditStripNamespaces}
+                        onchange={handleAuditNamespaceToggle}>
+                    </lightning-input>
+                </div>
+                <div class="slds-col">
+                    <lightning-button
+                        variant="neutral"
+                        label="Reset"
+                        icon-name="utility:refresh"
+                        onclick={handleAuditReset}>
+                    </lightning-button>
                 </div>
             </div>
         </div>
