@@ -36,9 +36,9 @@ public with sharing class FlowHealthController {
         try {
             return FlowMetadataService.getActiveFlows();
         } catch (FlowMetadataService.FlowHealthException e) {
-            throw new AuraHandledException(e.getMessage());
+            throw uiError(e.getMessage());
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to load flow list. Please check that the Named Credential ' +
                 '"FlowHealth_SelfOrg" is configured correctly. Error: ' + e.getMessage()
             );
@@ -65,9 +65,9 @@ public with sharing class FlowHealthController {
             FlowMetadata.FlowDefinition flowDef = FlowMetadataService.getFlowMetadata(flowDeveloperName);
             return buildDetailResult(flowDef, flowDeveloperName);
         } catch (FlowMetadataService.FlowHealthException e) {
-            throw new AuraHandledException(e.getMessage());
+            throw uiError(e.getMessage());
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to analyze flow "' + flowDeveloperName + '". Error: ' + e.getMessage()
             );
         }
@@ -107,7 +107,7 @@ public with sharing class FlowHealthController {
     ) {
         try {
             if (String.isBlank(flowDeveloperName)) {
-                throw new AuraHandledException('Flow developer name is required.');
+                throw uiError('Flow developer name is required.');
             }
 
             FlowAnalysisService.AnalysisResult result =
@@ -140,11 +140,11 @@ public with sharing class FlowHealthController {
 
             return result;
         } catch (FlowMetadataService.FlowHealthException e) {
-            throw new AuraHandledException(e.getMessage());
+            throw uiError(e.getMessage());
         } catch (AuraHandledException e) {
             throw e;
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to analyze flow "' + flowDeveloperName + '". Error: ' + e.getMessage()
             );
         }
@@ -166,7 +166,7 @@ public with sharing class FlowHealthController {
         try {
             return FlowSnapshotService.getFlowHistory(flowDeveloperName, 10);
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to load flow history. Error: ' + e.getMessage()
             );
         }
@@ -183,7 +183,7 @@ public with sharing class FlowHealthController {
         try {
             return FlowSnapshotService.getOrgTrendData(30);
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to load org trend data. Error: ' + e.getMessage()
             );
         }
@@ -201,7 +201,7 @@ public with sharing class FlowHealthController {
         try {
             return FlowSnapshotService.getFlowTrendSummary(flowDeveloperName);
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to load trend summary. Error: ' + e.getMessage()
             );
         }
@@ -224,12 +224,12 @@ public with sharing class FlowHealthController {
                        Process_Type__c, Scan_Type__c, Findings_JSON__c, CreatedDate
                 FROM Flow_Health_Snapshot__c
                 WHERE Flow_Developer_Name__c = :flowDeveloperName
-                ORDER BY CreatedDate DESC
+                ORDER BY CreatedDate DESC, Id DESC
                 LIMIT 1
             ];
             return snapshots.isEmpty() ? null : snapshots[0];
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to load snapshot detail. Error: ' + e.getMessage()
             );
         }
@@ -255,7 +255,7 @@ public with sharing class FlowHealthController {
                 ORDER BY Rule_Id__c ASC
             ];
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to load rule configurations. Error: ' + e.getMessage()
             );
         }
@@ -274,7 +274,7 @@ public with sharing class FlowHealthController {
         try {
             return FlowRuleConfigService.deployRuleChanges(rulesJson);
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to save rule changes. Error: ' + e.getMessage()
             );
         }
@@ -291,7 +291,7 @@ public with sharing class FlowHealthController {
         try {
             return FlowRuleConfigService.checkDeploymentStatus(jobId);
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to check deployment status. Error: ' + e.getMessage()
             );
         }
@@ -319,7 +319,7 @@ public with sharing class FlowHealthController {
                 ORDER BY Rule_Id__c ASC
             ];
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to load custom rules. Error: ' + e.getMessage()
             );
         }
@@ -377,7 +377,7 @@ public with sharing class FlowHealthController {
 
             return rule.Id;
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to save custom rule. Error: ' + e.getMessage()
             );
         }
@@ -392,14 +392,14 @@ public with sharing class FlowHealthController {
     public static void deleteCustomRule(String ruleId) {
         try {
             if (String.isBlank(ruleId)) {
-                throw new AuraHandledException('Rule Id is required for deletion.');
+                throw uiError('Rule Id is required for deletion.');
             }
             delete [SELECT Id FROM Flow_Health_Custom_Rule__c WHERE Id = :ruleId LIMIT 1];
             CustomRuleEvaluator.clearCache();
         } catch (AuraHandledException e) {
             throw e;
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to delete custom rule. Error: ' + e.getMessage()
             );
         }
@@ -423,7 +423,7 @@ public with sharing class FlowHealthController {
             update rule;
             CustomRuleEvaluator.clearCache();
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to toggle custom rule. Error: ' + e.getMessage()
             );
         }
@@ -446,7 +446,7 @@ public with sharing class FlowHealthController {
     public static TestRuleResult testCustomRule(String ruleJson, String flowDeveloperName) {
         try {
             if (String.isBlank(ruleJson) || String.isBlank(flowDeveloperName)) {
-                throw new AuraHandledException('Rule definition and flow name are required.');
+                throw uiError('Rule definition and flow name are required.');
             }
 
             // Parse rule from JSON into an in-memory record (not saved)
@@ -485,7 +485,7 @@ public with sharing class FlowHealthController {
         } catch (AuraHandledException e) {
             throw e;
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Test rule failed: ' + e.getMessage()
             );
         }
@@ -515,9 +515,9 @@ public with sharing class FlowHealthController {
         try {
             return FlowVersionService.getVersions(flowDeveloperName);
         } catch (FlowMetadataService.FlowHealthException e) {
-            throw new AuraHandledException(e.getMessage());
+            throw uiError(e.getMessage());
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to load flow versions. Error: ' + e.getMessage()
             );
         }
@@ -536,9 +536,9 @@ public with sharing class FlowHealthController {
         try {
             return FlowVersionService.compareVersions(oldVersionId, newVersionId);
         } catch (FlowMetadataService.FlowHealthException e) {
-            throw new AuraHandledException(e.getMessage());
+            throw uiError(e.getMessage());
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to compare flow versions. Error: ' + e.getMessage()
             );
         }
@@ -559,9 +559,9 @@ public with sharing class FlowHealthController {
             FlowMetadata.FlowDefinition newFlow = FlowXmlParser.parse(newXml);
             return FlowVersionService.compareDefinitions(oldFlow, newFlow);
         } catch (FlowMetadataService.FlowHealthException e) {
-            throw new AuraHandledException(e.getMessage());
+            throw uiError(e.getMessage());
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to compare flow XML. Error: ' + e.getMessage()
             );
         }
@@ -580,9 +580,9 @@ public with sharing class FlowHealthController {
             FlowMetadata.FlowDefinition flow = FlowXmlParser.parse(xmlContent);
             return FlowAnalysisService.analyzeFlowDefinition(flow);
         } catch (FlowMetadataService.FlowHealthException e) {
-            throw new AuraHandledException(e.getMessage());
+            throw uiError(e.getMessage());
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to analyze flow XML. Error: ' + e.getMessage()
             );
         }
@@ -606,22 +606,22 @@ public with sharing class FlowHealthController {
     ) {
         try {
             if (String.isBlank(destinationXml)) {
-                throw new AuraHandledException(
+                throw uiError(
                     'Destination (Base) Permission Set XML is required.'
                 );
             }
             if (String.isBlank(sourceXml)) {
-                throw new AuraHandledException(
+                throw uiError(
                     'Source (Delta) Permission Set XML is required.'
                 );
             }
             return PermSetPatchService.generatePatch(destinationXml, sourceXml);
         } catch (FlowMetadataService.FlowHealthException e) {
-            throw new AuraHandledException(e.getMessage());
+            throw uiError(e.getMessage());
         } catch (AuraHandledException e) {
             throw e;
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Unable to generate Permission Set patch. Error: ' + e.getMessage()
             );
         }
@@ -642,22 +642,22 @@ public with sharing class FlowHealthController {
     ) {
         try {
             if (String.isBlank(sourceXml)) {
-                throw new AuraHandledException(
+                throw uiError(
                     'Source (Delta) Permission Set XML is required for validation.'
                 );
             }
             if (String.isBlank(destinationXml)) {
-                throw new AuraHandledException(
+                throw uiError(
                     'Destination (Base) Permission Set XML is required for validation.'
                 );
             }
             return FH_MetadataValidator.validatePermSetDependencies(sourceXml, destinationXml);
         } catch (FlowMetadataService.FlowHealthException e) {
-            throw new AuraHandledException(e.getMessage());
+            throw uiError(e.getMessage());
         } catch (AuraHandledException e) {
             throw e;
         } catch (Exception e) {
-            throw new AuraHandledException(
+            throw uiError(
                 'Validation Error: The engine encountered an issue parsing the metadata structure. '
                 + 'Please ensure both XML files are valid Permission Sets. '
                 + '(Detail: ' + e.getMessage() + ')'
@@ -668,6 +668,21 @@ public with sharing class FlowHealthController {
     // =========================================================================
     // PRIVATE HELPERS
     // =========================================================================
+
+    /**
+     * Builds an AuraHandledException whose getMessage() returns the real
+     * message in BOTH Lightning (client) and Apex test context.
+     *
+     * WHY: without setMessage(), AuraHandledException.getMessage() returns
+     * the literal string 'Script-thrown exception' when caught in Apex
+     * (including tests), even though the client sees the constructor message.
+     * Calling setMessage() makes the two consistent.
+     */
+    private static AuraHandledException uiError(String message) {
+        AuraHandledException ex = new AuraHandledException(message);
+        ex.setMessage(message);
+        return ex;
+    }
 
     /**
      * Converts the raw FlowDefinition into a UI-friendly result object

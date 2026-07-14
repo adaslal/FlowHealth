@@ -1,4 +1,5 @@
 <template>
+    <div class="fh-app-root">
     <!-- Hidden download anchor (lives in shadow DOM for Locker Service compatibility) -->
     <a data-id="downloadLink" class="slds-hide" aria-hidden="true"></a>
 
@@ -853,11 +854,25 @@
     <!-- SETTINGS VIEW (Sprint 4)                                         -->
     <!-- ================================================================ -->
     <template lwc:if={isSettingsView}>
-        <div class="settings-card-container">
+        <lightning-card title="Rule Configuration" icon-name="utility:settings">
             <div class="slds-m-bottom_medium">
-                <h2 class="slds-text-heading_medium slds-m-bottom_xx-small">Rule Configuration</h2>
                 <p class="slds-text-body_small slds-text-color_weak">
                     Customize health check rules. Adjust severity, weight, and max deduction values. Toggle rules on/off.
+                </p>
+            </div>
+
+            <!-- DES-005: Element description scoring toggle -->
+            <div class="slds-box slds-box_x-small slds-m-bottom_medium">
+                <lightning-input
+                    type="checkbox"
+                    label="Flag missing descriptions on elements as errors (affects flow score)"
+                    checked={flagElementDescAsErrors}
+                    onchange={handleToggleElementDescErrors}
+                    disabled={elementDescToggleDisabled}
+                ></lightning-input>
+                <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                    When unchecked, undescribed Get Records, DML, Decision, and Loop elements are
+                    still listed as informational findings but do not reduce the flow score.
                 </p>
             </div>
 
@@ -893,6 +908,14 @@
                         Changes saved successfully!
                     </span>
                 </template>
+
+                <!-- Status unconfirmed (honest fallback — not an error, not a success) -->
+                <template lwc:if={ruleConfigsInfo}>
+                    <span class="slds-m-left_medium slds-text-color_weak slds-text-body_small">
+                        <lightning-icon icon-name="utility:info" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                        {ruleConfigsInfo}
+                    </span>
+                </template>
             </div>
 
             <!-- Error -->
@@ -922,7 +945,7 @@
                     hide-checkbox-column
                 ></lightning-datatable>
             </template>
-        </div>
+        </lightning-card>
 
         <!-- ============================================================ -->
         <!-- CUSTOM RULES SECTION                                          -->
@@ -2154,4 +2177,5 @@
 
         </template>
     </template>
+    </div>
 </template>

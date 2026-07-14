@@ -11,10 +11,53 @@
     --color-fair: #e87400;
     --color-needs-work: #c23934;
     --ring-size: 160px;
+
+    /* ---------------------------------------------------------------------
+       PREMIUM TOKEN SYSTEM (Sprint 9 — UI Redesign)
+       Spacing scale, surfaces, and text tokens.
+       --------------------------------------------------------------------- */
+    --fh-space-xs: 0.25rem;
+    --fh-space-sm: 0.5rem;
+    --fh-space-md: 1rem;
+    --fh-space-lg: 1.5rem;
+    --fh-space-xl: 2rem;
+
+    --fh-radius-sm: 0.375rem;
+    --fh-radius-md: 0.5rem;
+    --fh-radius-lg: 0.75rem;
+
+    --fh-surface-page: #f4f6f9;
+    --fh-surface-card: #ffffff;
+    --fh-surface-card-alt: #f8f9fb;
+    --fh-surface-hover: #f0f7ff;
+    --fh-border-color: #e5e7eb;
+    --fh-border-color-strong: #d8dce6;
+    --fh-text-primary: #1d2733;
+    --fh-text-secondary: #3e3e3c;
+    --fh-text-muted: #706e6b;
+    --fh-accent: #0176d3;
+    --fh-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --fh-shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.1);
+
     display: block;
-    background: #f4f6f9;
+    background: var(--fh-surface-page);
     padding: 1rem;
     border-radius: 0.5rem;
+}
+
+/* =========================================================================
+   APP ROOT WRAPPER
+   Applied to the <div class="fh-app-root"> that wraps the whole template.
+   ========================================================================= */
+
+.fh-app-root {
+    display: block;
+}
+
+.slds-page-header__col-actions {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
 }
 
 /* =========================================================================
@@ -909,7 +952,8 @@
    SPRINT 7: PERMSET PATCHMASTER
    ========================================================================= */
 
-.permset-xml-textarea {
+.permset-xml-textarea,
+.audit-xml-textarea {
     font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
     font-size: 0.82rem;
     line-height: 1.5;
@@ -919,9 +963,12 @@
     border-radius: 0.5rem;
     padding: 1rem;
     resize: vertical;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-.permset-xml-textarea:focus {
+.permset-xml-textarea:focus,
+.audit-xml-textarea:focus {
     border-color: #0176d3;
     box-shadow: 0 0 0 1px #0176d3;
     outline: none;
@@ -1381,4 +1428,121 @@
     line-height: 1.6;
     max-height: 300px;
     overflow-y: auto;
+}
+
+/* =========================================================================
+   SPRINT 9: HEADER COMPACTNESS + PREMIUM POLISH
+   ========================================================================= */
+
+.slds-page-header {
+    padding: 0.85rem 1.25rem !important;
+    border-radius: 0.5rem;
+}
+
+.slds-page-header__row {
+    align-items: center;
+}
+
+.slds-page-header__title {
+    font-size: 1.15rem !important;
+    line-height: 1.3;
+}
+
+/* Trend section — more visual weight */
+.trend-section {
+    padding: 1.25rem 1.5rem;
+    border-left: 3px solid var(--fh-accent, #0176d3);
+}
+
+.trend-chart-wrapper {
+    max-width: 100%;
+}
+
+/* Settings — give the datatable inside its card some breathing room */
+.rule-config-table {
+    margin-top: 0.25rem;
+    border-radius: 0.375rem;
+    overflow: hidden;
+}
+
+/* Action button row polish */
+.action-btn-compact {
+    transition: all 0.15s ease;
+}
+
+.action-btn-compact:hover {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+/* =========================================================================
+   SPRINT 9: RESPONSIVE BREAKPOINTS (none existed before this pass)
+   ========================================================================= */
+
+@media (max-width: 768px) {
+    .slds-page-header {
+        padding: 0.75rem 1rem !important;
+    }
+
+    .slds-page-header__title {
+        font-size: 1rem !important;
+    }
+
+    .app-logo {
+        width: 36px;
+        height: 36px;
+    }
+
+    .view-toggle {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0.4rem;
+        scrollbar-width: thin;
+    }
+
+    .view-toggle-btn {
+        flex-shrink: 0;
+        padding: 0.5rem 0.9rem;
+        font-size: 0.8rem;
+    }
+
+    :host {
+        --ring-size: 120px;
+    }
+
+    .action-buttons-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .action-buttons-row .action-btn-compact {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .settings-card-container,
+    .trend-section,
+    .compare-score-hero {
+        padding: 1rem;
+    }
+
+    .findings-summary-table-wrapper,
+    .audit-trace-container {
+        overflow-x: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .slds-page-header__col-actions {
+        margin-left: 0.5rem;
+    }
+
+    .view-toggle-btn {
+        padding: 0.45rem 0.7rem;
+        font-size: 0.75rem;
+    }
+
+    .view-toggle-btn lightning-icon {
+        display: none;
+    }
 }

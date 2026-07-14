@@ -128,6 +128,7 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
     @track ruleConfigsSaving = false;
     @track ruleConfigsSaved = false;
     @track ruleConfigError = null;
+    @track ruleConfigsInfo = null;
     @track ruleDeployJobId = null;
     @track modifiedRules = {}; // key: developerName, value: changed fields
 
@@ -1052,6 +1053,7 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
         this.ruleConfigsSaving = true;
         this.ruleConfigsSaved = false;
         this.ruleConfigError = null;
+        this.ruleConfigsInfo = null;
 
         saveRuleChanges({ rulesJson: JSON.stringify(changes) })
             .then(jobId => {
@@ -1065,11 +1067,13 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
             });
     }
 
-    pollDeployStatus() {
+    pollDeployStatus(attempt) {
         if (!this.ruleDeployJobId) {
             this.ruleConfigsSaving = false;
             return;
         }
+        const attemptNum = attempt || 1;
+        const MAX_ATTEMPTS = 10; // ~20 seconds
 
         // eslint-disable-next-line @lwc/lwc/no-async-operation
         setTimeout(() => {
@@ -1079,33 +1083,87 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
                         this.ruleConfigsSaving = false;
                         this.ruleConfigsSaved = true;
                         this.modifiedRules = {};
-                        // Clear draft values from datatable
                         const table = this.template.querySelector('lightning-datatable.rule-config-table');
                         if (table) {
                             table.draftValues = [];
                         }
-                        // Reload configs to show updated values
                         this.loadRuleConfigs();
-                        // Auto-hide success message after 3 seconds
                         // eslint-disable-next-line @lwc/lwc/no-async-operation
                         setTimeout(() => { this.ruleConfigsSaved = false; }, 3000);
                     } else if (status === 'Failed') {
-                        this.ruleConfigError = 'Metadata deployment failed. Please check your permissions.';
+                        this.ruleConfigError = 'Metadata deployment failed. Check Setup → Deployment Status for details.';
                         this.ruleConfigsSaving = false;
+                    } else if (status === 'Unknown' || attemptNum >= MAX_ATTEMPTS) {
+                        // Honest fallback: we could NOT confirm the result.
+                        // Never show a fake green success.
+                        this.ruleConfigsSaving = false;
+                        this.ruleConfigsInfo =
+                            'Changes submitted. Deployment status could not be confirmed — ' +
+                            'verify in Setup → Deployment Status, then refresh this tab.';
+                        this.modifiedRules = {};
+                        this.loadRuleConfigs();
                     } else {
-                        // Still in progress — keep polling
-                        this.pollDeployStatus();
+                        // Pending / InProgress — keep polling
+                        this.pollDeployStatus(attemptNum + 1);
                     }
                 })
                 .catch(() => {
-                    // If status check fails, assume success after delay
                     this.ruleConfigsSaving = false;
-                    this.ruleConfigsSaved = true;
-                    this.modifiedRules = {};
-                    // eslint-disable-next-line @lwc/lwc/no-async-operation
-                    setTimeout(() => { this.ruleConfigsSaved = false; }, 3000);
+                    this.ruleConfigsInfo =
+                        'Changes submitted. Deployment status could not be confirmed — ' +
+                        'verify in Setup → Deployment Status, then refresh this tab.';
                 });
         }, 2000);
+    }
+
+    // =========================================================================
+    // DES-005: ELEMENT DESCRIPTION TOGGLE
+    // The rule is always active; its CMDT Weight controls score impact.
+    // Weight 0  = informational (findings shown, score untouched — default).
+    // Weight 5  = "error" mode (findings deduct from the score).
+    // =========================================================================
+
+    get elementDescRule() {
+        return this.ruleConfigs.find(r => r.Rule_Id__c === 'DES-005');
+    }
+
+    get flagElementDescAsErrors() {
+        const rule = this.elementDescRule;
+        return rule ? (rule.Weight__c || 0) > 0 : false;
+    }
+
+    get elementDescToggleDisabled() {
+        return !this.elementDescRule || this.ruleConfigsSaving;
+    }
+
+    handleToggleElementDescErrors(event) {
+        const checked = event.target.checked;
+        const rule = this.elementDescRule;
+        if (!rule) return;
+
+        const change = {
+            developerName: rule.DeveloperName,
+            label: rule.MasterLabel,
+            severity: rule.Severity__c,
+            weight: checked ? 5 : 0,
+            maxDeduction: rule.Max_Deduction__c,
+            isActive: true
+        };
+
+        this.ruleConfigsSaving = true;
+        this.ruleConfigsSaved = false;
+        this.ruleConfigError = null;
+        this.ruleConfigsInfo = null;
+
+        saveRuleChanges({ rulesJson: JSON.stringify([change]) })
+            .then(jobId => {
+                this.ruleDeployJobId = jobId;
+                this.pollDeployStatus();
+            })
+            .catch(error => {
+                this.ruleConfigError = this.extractError(error);
+                this.ruleConfigsSaving = false;
+            });
     }
 
     handleResetRuleDefaults() {
@@ -2647,10 +2705,13 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
             'production', 'irreversible', 'critical', 'violation',
             'breach', 'time bomb', '100-query'
         ];
-        const boldKeywordRegex = new RegExp(
-            '(' + IMPACT_KEYWORDS.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')',
-            'gi'
-        );
+        const keywordPattern =
+            '(' + IMPACT_KEYWORDS.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')';
+        const boldKeywordRegex = new RegExp(keywordPattern, 'gi');
+        // Separate non-global regex for testing segments — a /g/ regex is
+        // stateful (lastIndex advances between .test() calls), which caused
+        // intermittent false negatives when testing consecutive segments.
+        const boldTestRegex = new RegExp('^' + keywordPattern + '$', 'i');
 
         const trace = result.trace.map((t, idx) => {
             const rawImpact = t.impact || '';
@@ -2661,10 +2722,8 @@ export default class FlowHealthApp extends NavigationMixin(LightningElement) {
                 impactSegments = parts.filter(p => p.length > 0).map((p, si) => ({
                     key: 'is_' + idx + '_' + si,
                     text: p,
-                    isBold: boldKeywordRegex.test(p)
+                    isBold: boldTestRegex.test(p)
                 }));
-                // Reset regex lastIndex after each use
-                boldKeywordRegex.lastIndex = 0;
             }
             return {
                 ...t,

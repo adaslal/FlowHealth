@@ -199,7 +199,7 @@ public with sharing class FlowVersionService {
 
         if (result == null || result.records == null || result.records.isEmpty()) {
             throw new FlowMetadataService.FlowHealthException(
-                'No flow version found with Id: ' + versionId
+                'Flow version not found for Id: ' + versionId
             );
         }
 

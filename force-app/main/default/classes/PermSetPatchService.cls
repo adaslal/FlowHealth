@@ -662,8 +662,11 @@ public class PermSetPatchService {
         if (def.description != null) {
             lines.add('    <description>' + escapeXml(def.description) + '</description>');
         }
-        if (def.hasActivationRequired != null) {
-            lines.add('    <hasActivationRequired>' + def.hasActivationRequired + '</hasActivationRequired>');
+        // Emit only when true: absent means false in Salesforce semantics, and
+        // the parser defaults absent → false. Emitting "false" here would make
+        // a no-op patch differ textually from its input XML.
+        if (def.hasActivationRequired == true) {
+            lines.add('    <hasActivationRequired>true</hasActivationRequired>');
         }
         if (def.label != null) {
             lines.add('    <label>' + escapeXml(def.label) + '</label>');

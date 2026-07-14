@@ -62,7 +62,7 @@ public with sharing class FlowHealthReportController {
                    Process_Type__c, Scan_Type__c, Findings_JSON__c, CreatedDate
             FROM Flow_Health_Snapshot__c
             WHERE Flow_Developer_Name__c = :flowDevName
-            ORDER BY CreatedDate DESC
+            ORDER BY CreatedDate DESC, Id DESC
             LIMIT 1
         ];
         if (!snapshots.isEmpty()) {

@@ -8,4 +8,4 @@ bin/
 Thumbs.db
 
 # Secrets
-.env
+.env.sf/

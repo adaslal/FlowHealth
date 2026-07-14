@@ -74,7 +74,7 @@ public with sharing class FlowSnapshotService {
                    Scan_Type__c, CreatedDate
             FROM Flow_Health_Snapshot__c
             WHERE Flow_Developer_Name__c = :flowDevName
-            ORDER BY CreatedDate DESC
+            ORDER BY CreatedDate DESC, Id DESC
             LIMIT :maxRecords
         ];
     }
@@ -126,7 +126,7 @@ public with sharing class FlowSnapshotService {
             SELECT Score__c, Grade__c, CreatedDate
             FROM Flow_Health_Snapshot__c
             WHERE Flow_Developer_Name__c = :flowDevName
-            ORDER BY CreatedDate DESC
+            ORDER BY CreatedDate DESC, Id DESC
             LIMIT 2
         ];
 

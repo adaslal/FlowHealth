@@ -205,10 +205,23 @@ public class FlowDiffService {
             changes.add('fault connector changed');
         }
 
+        // DML-specific fields — recordCreates/Updates/Deletes route through
+        // this generic pipeline but carry high-impact fields (target object,
+        // input reference, filters) that the base comparison can't see.
+        addDmlFieldChanges(oldEl, newEl, changes);
+
+        // SIGNATURE-DRIVEN DETECTION: the type-specific logic signatures
+        // already encode every functional field (assignment items, action
+        // parameters, DML config). If the signatures differ but none of the
+        // explicit checks above fired, something functional still changed —
+        // report it instead of silently missing it.
+        String oldSig = computeElementSignature(typeName, oldEl);
+        String newSig = computeElementSignature(typeName, newEl);
+        if (changes.isEmpty() && oldSig != newSig) {
+            changes.add('internal configuration changed (logic signature differs)');
+        }
+
         if (!changes.isEmpty()) {
-            // Compute logic signatures to determine if change is cosmetic
-            String oldSig = computeElementSignature(typeName, oldEl);
-            String newSig = computeElementSignature(typeName, newEl);
             Boolean isCosmetic = (oldSig == newSig);
 
             result.changes.add(
@@ -229,10 +242,76 @@ public class FlowDiffService {
      * that go through the generic compareElementList pipeline.
      */
     private String computeElementSignature(String typeName, FlowMetadata.FlowElement el) {
-        // For generic elements routed through compareBaseElement, use the base signature.
-        // Specialized types (decisions, loops, etc.) have their own compare methods
-        // that call FlowLogicSignature directly.
+        // Dispatch every generic-pipeline type to its specific signature so
+        // functional changes are both DETECTED and never marked cosmetic.
+        if (el instanceof FlowMetadata.FlowRecordCreate) {
+            return FlowLogicSignature.forRecordCreate((FlowMetadata.FlowRecordCreate) el);
+        }
+        if (el instanceof FlowMetadata.FlowRecordUpdate) {
+            return FlowLogicSignature.forRecordUpdate((FlowMetadata.FlowRecordUpdate) el);
+        }
+        if (el instanceof FlowMetadata.FlowRecordDelete) {
+            return FlowLogicSignature.forRecordDelete((FlowMetadata.FlowRecordDelete) el);
+        }
+        if (el instanceof FlowMetadata.FlowAssignment) {
+            return FlowLogicSignature.forAssignment((FlowMetadata.FlowAssignment) el);
+        }
+        if (el instanceof FlowMetadata.FlowActionCall) {
+            return FlowLogicSignature.forActionCall((FlowMetadata.FlowActionCall) el);
+        }
+        if (el instanceof FlowMetadata.FlowWait) {
+            return FlowLogicSignature.forWait((FlowMetadata.FlowWait) el);
+        }
+        // Specialized types (decisions, loops, lookups, screens, subflows)
+        // have their own compare methods that call FlowLogicSignature directly.
         return FlowLogicSignature.forElement(el);
+    }
+
+    /**
+     * Detects changes to DML-specific fields on Record Create / Update / Delete
+     * elements. Appends human-readable change descriptions to the list.
+     */
+    private void addDmlFieldChanges(
+        FlowMetadata.FlowElement oldEl,
+        FlowMetadata.FlowElement newEl,
+        List<String> changes
+    ) {
+        String oldObj = null, newObj = null;
+        String oldRef = null, newRef = null;
+        Integer oldFilters = null, newFilters = null;
+
+        if (oldEl instanceof FlowMetadata.FlowRecordUpdate && newEl instanceof FlowMetadata.FlowRecordUpdate) {
+            FlowMetadata.FlowRecordUpdate o = (FlowMetadata.FlowRecordUpdate) oldEl;
+            FlowMetadata.FlowRecordUpdate n = (FlowMetadata.FlowRecordUpdate) newEl;
+            oldObj = o.object_x;       newObj = n.object_x;
+            oldRef = o.inputReference; newRef = n.inputReference;
+            oldFilters = o.filters != null ? o.filters.size() : 0;
+            newFilters = n.filters != null ? n.filters.size() : 0;
+        } else if (oldEl instanceof FlowMetadata.FlowRecordCreate && newEl instanceof FlowMetadata.FlowRecordCreate) {
+            FlowMetadata.FlowRecordCreate o = (FlowMetadata.FlowRecordCreate) oldEl;
+            FlowMetadata.FlowRecordCreate n = (FlowMetadata.FlowRecordCreate) newEl;
+            oldObj = o.object_x;       newObj = n.object_x;
+            oldRef = o.inputReference; newRef = n.inputReference;
+        } else if (oldEl instanceof FlowMetadata.FlowRecordDelete && newEl instanceof FlowMetadata.FlowRecordDelete) {
+            FlowMetadata.FlowRecordDelete o = (FlowMetadata.FlowRecordDelete) oldEl;
+            FlowMetadata.FlowRecordDelete n = (FlowMetadata.FlowRecordDelete) newEl;
+            oldObj = o.object_x;       newObj = n.object_x;
+            oldRef = o.inputReference; newRef = n.inputReference;
+            oldFilters = o.filters != null ? o.filters.size() : 0;
+            newFilters = n.filters != null ? n.filters.size() : 0;
+        } else {
+            return; // not a DML element
+        }
+
+        if (strChanged(oldObj, newObj)) {
+            changes.add('object changed from "' + safe(oldObj) + '" to "' + safe(newObj) + '"');
+        }
+        if (strChanged(oldRef, newRef)) {
+            changes.add('input reference changed from "' + safe(oldRef) + '" to "' + safe(newRef) + '"');
+        }
+        if (oldFilters != null && oldFilters != newFilters) {
+            changes.add('filter count changed from ' + oldFilters + ' to ' + newFilters);
+        }
     }
 
     // =========================================================================

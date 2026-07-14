@@ -37,17 +37,26 @@ private class PermSetPatchServiceTest {
         PermSetPatchService.PatchResult result = PermSetPatchService.generatePatch(destXml, srcXml);
         Test.stopTest();
 
-        // Verify source Contact permission was ADDED to destination
+        // Verify: Contact ADDED, and Account MODIFIED (source elevates
+        // create/edit/delete on the existing Account permission — the
+        // service's documented "Elevated" merge behavior).
         System.assertEquals(2, result.patchedPermCount, 'Should have 2 object permissions in patched');
         System.assertEquals(1, result.addedCount, 'Should have added 1 permission');
-        System.assertEquals(0, result.modifiedCount, 'Should not have modified any permissions');
+        System.assertEquals(1, result.modifiedCount, 'Account should be modified (elevated by source)');
 
-        // Verify action list
-        System.assertEquals(1, result.actionsApplied.size(), 'Should have 1 action');
-        PermSetPatchService.PatchAction addedAction = result.actionsApplied[0];
-        System.assertEquals('ADDED', addedAction.actionType, 'Should be ADDED action');
+        // Verify action list — search by type, order is not guaranteed
+        System.assertEquals(2, result.actionsApplied.size(), 'Should have 2 actions (ADDED + MODIFIED)');
+        PermSetPatchService.PatchAction addedAction = null;
+        PermSetPatchService.PatchAction modifiedAction = null;
+        for (PermSetPatchService.PatchAction a : result.actionsApplied) {
+            if (a.actionType == 'ADDED') addedAction = a;
+            if (a.actionType == 'MODIFIED') modifiedAction = a;
+        }
+        System.assertNotEquals(null, addedAction, 'Should have an ADDED action');
         System.assertEquals('objectPermission', addedAction.itemType, 'Should be objectPermission');
         System.assertEquals('Contact', addedAction.itemName, 'Should be Contact object');
+        System.assertNotEquals(null, modifiedAction, 'Should have a MODIFIED action');
+        System.assertEquals('Account', modifiedAction.itemName, 'Should be Account object');
     }
 
     // =========================================================================

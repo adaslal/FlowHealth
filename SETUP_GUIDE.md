@@ -70,6 +70,18 @@ Credential with OAuth to authenticate.
 3. Save. It will redirect you to authorize — click **Allow**.
 4. If successful, the Named Credential status should show "Authenticated".
 
+### 2c-1: Grant Users Access to the Credential Principal
+
+The `Flow Health User` permission set deliberately does NOT include External
+Credential Principal Access (the credential is org-specific and created by
+you, not deployed with the app). Grant it manually:
+
+1. Go to **Setup > Permission Sets > Flow Health User > External Credential Principal Access**
+2. Click **Edit**, add `FlowHealth_SelfOrg - FlowHealth_Principal`, and Save.
+
+Without this step, users (including admins) get an authentication error when
+the app calls the Tooling API.
+
 ### 2d: Add Remote Site Setting
 
 1. Go to **Setup > Remote Site Settings > New**

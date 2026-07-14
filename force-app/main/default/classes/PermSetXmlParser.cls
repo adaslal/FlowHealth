@@ -73,6 +73,10 @@ public class PermSetXmlParser {
     private static PermSetMetadata.PermissionSetDefinition parseDefinition(Dom.XmlNode root) {
         PermSetMetadata.PermissionSetDefinition def = new PermSetMetadata.PermissionSetDefinition();
 
+        // Salesforce semantics: an absent <hasActivationRequired> tag means false.
+        // Default it so callers never see null for a boolean flag.
+        def.hasActivationRequired = false;
+
         for (Dom.XmlNode child : root.getChildElements()) {
             String name = child.getName();
 

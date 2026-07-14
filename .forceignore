@@ -11,3 +11,9 @@
 # IDE
 **/.sfdx
 **/.sf
+
+# Org-specific credentials — NEVER deploy or package these.
+# The Named/External Credential points at the original dev org; each
+# installing org creates its own per SETUP_GUIDE.md.
+**/namedCredentials/**
+**/externalCredentials/**

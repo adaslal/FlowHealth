@@ -28,7 +28,10 @@ private class FlowHealthReportControllerTest2 {
         // Verify snapshot was loaded
         System.assertNotEquals(null, ctrl.snapshot, 'Snapshot should be loaded from ID parameter');
         System.assertEquals(snapshot.Id, ctrl.snapshot.Id, 'Loaded snapshot ID should match');
-        System.assertEquals('TestFlow', ctrl.snapshot.Name, 'Snapshot name should match');
+        // Name is an AutoNumber (FHS-{000000}) and cannot be set in tests —
+        // assert on the developer name field instead.
+        System.assertEquals('test_flow_dev', ctrl.snapshot.Flow_Developer_Name__c,
+            'Snapshot flow developer name should match');
     }
 
     /**
@@ -460,7 +463,7 @@ private class FlowHealthReportControllerTest2 {
             Medium_Count__c = 0,
             Low_Count__c = 0,
             Process_Type__c = 'Flow',
-            Scan_Type__c = 'Health',
+            Scan_Type__c = 'Single',
             Findings_JSON__c = findingsJson
         );
         return snapshot;

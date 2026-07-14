@@ -42,7 +42,7 @@ public with sharing class FlowSnapshotServiceTest {
             'Test Flow Label',
             'AutoLaunchedFlow',
             result,
-            'HealthScan'
+            'Single'
         );
         Test.stopTest();
 
@@ -60,7 +60,7 @@ public with sharing class FlowSnapshotServiceTest {
         Assert.areEqual(85, snapshot.Score__c);
         Assert.areEqual('A', snapshot.Grade__c);
         Assert.areEqual('AutoLaunchedFlow', snapshot.Process_Type__c);
-        Assert.areEqual('HealthScan', snapshot.Scan_Type__c);
+        Assert.areEqual('Single', snapshot.Scan_Type__c);
     }
 
     /**
@@ -76,7 +76,7 @@ public with sharing class FlowSnapshotServiceTest {
             'Severity Test Flow',
             'Flow',
             result,
-            'HealthScan'
+            'Single'
         );
         Test.stopTest();
 
@@ -106,7 +106,7 @@ public with sharing class FlowSnapshotServiceTest {
             'Findings Test Flow',
             'Flow',
             result,
-            'HealthScan'
+            'Single'
         );
         Test.stopTest();
 
@@ -135,7 +135,7 @@ public with sharing class FlowSnapshotServiceTest {
             'Null Severity Flow',
             'Flow',
             result,
-            'HealthScan'
+            'Single'
         );
         Test.stopTest();
 
@@ -168,7 +168,7 @@ public with sharing class FlowSnapshotServiceTest {
                 Score__c = 80 + i,
                 Grade__c = 'A',
                 Process_Type__c = 'Flow',
-                Scan_Type__c = 'HealthScan'
+                Scan_Type__c = 'Single'
             ));
         }
         insert snapshots;
@@ -199,7 +199,7 @@ public with sharing class FlowSnapshotServiceTest {
                 Score__c = 70 + i,
                 Grade__c = 'B',
                 Process_Type__c = 'Flow',
-                Scan_Type__c = 'HealthScan'
+                Scan_Type__c = 'Single'
             ));
         }
         insert snapshots;
@@ -227,7 +227,7 @@ public with sharing class FlowSnapshotServiceTest {
                 Score__c = 60 + i,
                 Grade__c = 'C',
                 Process_Type__c = 'Flow',
-                Scan_Type__c = 'HealthScan'
+                Scan_Type__c = 'Single'
             ));
         }
         insert snapshots;
@@ -266,7 +266,7 @@ public with sharing class FlowSnapshotServiceTest {
             Score__c = 85,
             Grade__c = 'A',
             Process_Type__c = 'Flow',
-            Scan_Type__c = 'HealthScan'
+            Scan_Type__c = 'Single'
         );
         insert snapshot;
 
@@ -294,7 +294,7 @@ public with sharing class FlowSnapshotServiceTest {
             Score__c = 70,
             Grade__c = 'C',
             Process_Type__c = 'Flow',
-            Scan_Type__c = 'HealthScan'
+            Scan_Type__c = 'Single'
         );
         insert snapshot1;
 
@@ -305,7 +305,7 @@ public with sharing class FlowSnapshotServiceTest {
             Score__c = 85,
             Grade__c = 'A',
             Process_Type__c = 'Flow',
-            Scan_Type__c = 'HealthScan'
+            Scan_Type__c = 'Single'
         );
         insert snapshot2;
 
@@ -337,7 +337,7 @@ public with sharing class FlowSnapshotServiceTest {
             Score__c = 90,
             Grade__c = 'A',
             Process_Type__c = 'Flow',
-            Scan_Type__c = 'HealthScan'
+            Scan_Type__c = 'Single'
         );
         insert snapshot1;
 
@@ -348,7 +348,7 @@ public with sharing class FlowSnapshotServiceTest {
             Score__c = 65,
             Grade__c = 'D',
             Process_Type__c = 'Flow',
-            Scan_Type__c = 'HealthScan'
+            Scan_Type__c = 'Single'
         );
         insert snapshot2;
 
@@ -380,7 +380,7 @@ public with sharing class FlowSnapshotServiceTest {
             Score__c = 80,
             Grade__c = 'A',
             Process_Type__c = 'Flow',
-            Scan_Type__c = 'HealthScan'
+            Scan_Type__c = 'Single'
         );
         insert snapshot1;
 
@@ -391,7 +391,7 @@ public with sharing class FlowSnapshotServiceTest {
             Score__c = 80,
             Grade__c = 'A',
             Process_Type__c = 'Flow',
-            Scan_Type__c = 'HealthScan'
+            Scan_Type__c = 'Single'
         );
         insert snapshot2;
 
@@ -441,7 +441,7 @@ public with sharing class FlowSnapshotServiceTest {
                 Score__c = 75 + i,
                 Grade__c = 'B',
                 Process_Type__c = 'Flow',
-                Scan_Type__c = 'HealthScan'
+                Scan_Type__c = 'Single'
             ));
         }
         insert snapshots;

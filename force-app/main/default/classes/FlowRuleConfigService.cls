@@ -28,7 +28,9 @@ public with sharing class FlowRuleConfigService {
             (List<RuleChangeRequest>) JSON.deserialize(rulesJson, List<RuleChangeRequest>.class);
 
         if (changes == null || changes.isEmpty()) {
-            throw new AuraHandledException('No rule changes provided.');
+            AuraHandledException ex = new AuraHandledException('No rule changes provided.');
+            ex.setMessage('No rule changes provided.');
+            throw ex;
         }
 
         Metadata.DeployContainer container = new Metadata.DeployContainer();
@@ -75,26 +77,46 @@ public with sharing class FlowRuleConfigService {
     }
 
     /**
-     * Checks the status of an async metadata deployment.
+     * Checks the REAL status of an async metadata deployment by querying
+     * DeployRequest via the Tooling API (same Named Credential the rest of
+     * the app already requires).
      *
-     * The DeployRequest sObject isn't available in all orgs (e.g., Developer Edition).
-     * Instead, we use the Tooling API to query deployment status via HTTP callout
-     * to the current org's own Tooling API.
-     *
-     * However, to keep this simple and avoid callout complexity here, we use a
-     * heuristic: metadata deployments for custom metadata typically complete within
-     * 5-10 seconds. The LWC polls this method, and we return 'Succeeded' if
-     * enough time has passed since the job was enqueued. The FlowRuleDeployCallback
-     * logs the actual result server-side.
-     *
-     * @param jobId  The deployment job ID (unused in heuristic mode)
-     * @return Status string: 'Succeeded' (heuristic - callback logs actual status)
+     * @param jobId  The deployment job ID from enqueueDeployment
+     * @return 'Pending' | 'InProgress' | 'Succeeded' | 'Failed' | 'Unknown'
+     *         'Unknown' means the status could not be confirmed (e.g. the
+     *         Named Credential is unavailable) — the LWC shows a neutral
+     *         "submitted, verify in Setup" message instead of a fake success.
      */
     public static String checkDeploymentStatus(String jobId) {
-        // In a managed package with Tooling API access, this could query
-        // DeployRequest. For Developer Edition compatibility, we return
-        // 'Succeeded' and rely on FlowRuleDeployCallback for error logging.
-        return 'Succeeded';
+        if (String.isBlank(jobId)) return 'Unknown';
+        try {
+            String query = 'SELECT Id, Status FROM DeployRequest '
+                         + 'WHERE Id = \'' + String.escapeSingleQuotes(jobId) + '\'';
+            HttpRequest req = new HttpRequest();
+            req.setEndpoint('callout:FlowHealth_SelfOrg/services/data/v62.0/tooling/query'
+                + '?q=' + EncodingUtil.urlEncode(query, 'UTF-8'));
+            req.setMethod('GET');
+            req.setHeader('Content-Type', 'application/json');
+            req.setTimeout(15000);
+
+            HttpResponse res = new Http().send(req);
+            if (res.getStatusCode() != 200) return 'Unknown';
+
+            Map<String, Object> body =
+                (Map<String, Object>) JSON.deserializeUntyped(res.getBody());
+            List<Object> records = (List<Object>) body.get('records');
+            if (records == null || records.isEmpty()) return 'Unknown';
+
+            String status = (String) ((Map<String, Object>) records[0]).get('Status');
+            if (status == 'Succeeded') return 'Succeeded';
+            if (status == 'Failed' || status == 'Canceled' || status == 'Canceling') return 'Failed';
+            if (status == 'Pending') return 'Pending';
+            if (status == 'InProgress' || status == 'SucceededPartial') return 'InProgress';
+            return 'Unknown';
+        } catch (Exception e) {
+            // Named Credential missing/misconfigured — never fake a success
+            return 'Unknown';
+        }
     }
 
     // =========================================================================
